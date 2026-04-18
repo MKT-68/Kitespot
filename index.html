@@ -1084,7 +1084,91 @@ html, body {
 // ══════════════════════════════════════════════════════════════
 const WAPI_KEY  = '123791b7b5524c13b53193933261304';
 const WAPI_BASE = 'https://api.weatherapi.com/v1';
-const KEY_STORE = 'kitespot_claude_key';
+// ══════════════════════════════════════════════════════════════
+// PERMANENTE KEY OPSLAG — IndexedDB (iOS wist localStorage na
+// 7 dagen inactiviteit via ITP; IndexedDB blijft bewaard)
+// Fallback naar localStorage voor oudere browsers
+// ══════════════════════════════════════════════════════════════
+const KEY_STORE  = 'kitespot_claude_key';
+const IDB_NAME   = 'KiteSpotDB';
+const IDB_STORE  = 'settings';
+const IDB_VER    = 1;
+
+let _idb = null; // cached IDBDatabase instance
+
+function openIDB() {
+  if (_idb) return Promise.resolve(_idb);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VER);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction(IDB_STORE, 'readwrite');
+      const req = tx.objectStore(IDB_STORE).put(value, key);
+      req.onsuccess = () => resolve();
+      req.onerror   = () => reject(req.error);
+    });
+  } catch {
+    // Fallback
+    localStorage.setItem(key, value);
+  }
+}
+
+async function idbGet(key) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result ?? null);
+      req.onerror   = () => reject(req.error);
+    });
+  } catch {
+    // Fallback
+    return localStorage.getItem(key);
+  }
+}
+
+async function idbDelete(key) {
+  try {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction(IDB_STORE, 'readwrite');
+      const req = tx.objectStore(IDB_STORE).delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror   = () => reject(req.error);
+    });
+  } catch {
+    localStorage.removeItem(key);
+  }
+}
+
+// In-memory cache zodat getKey() synchroon werkt na eerste load
+let _cachedKey = '';
+
+async function loadKeyIntoCache() {
+  // Probeer eerst IndexedDB, dan localStorage als fallback
+  const fromIDB = await idbGet(KEY_STORE);
+  const fromLS  = localStorage.getItem(KEY_STORE);
+  _cachedKey = fromIDB || fromLS || '';
+  // Migreer eventuele oude localStorage key naar IndexedDB
+  if (!fromIDB && fromLS) {
+    await idbSet(KEY_STORE, fromLS);
+    localStorage.removeItem(KEY_STORE);
+  }
+  return _cachedKey;
+}
+
+function getKey() { return _cachedKey; }
 
 const SPOTS = [
   { id:'andijk',        name:'Andijk',        region:'Noord-Holland', lat:52.7393, lon:5.175,  type:'IJsselmeer · Vlak', ideal:'NO–NW wind', idealFrom:45,  idealTo:315, idealMid:0,   level:'Beginner+' },
@@ -1162,21 +1246,23 @@ function formatDateLabel(dateStr) {
 // ── API KEY ───────────────────────────────────────────────────
 function getKey() { return localStorage.getItem(KEY_STORE) || ''; }
 
-function saveKey() {
+async function saveKey() {
   const v = document.getElementById('keyInput').value.trim();
   if (!v.startsWith('sk-ant-') || v.length < 20) {
     document.getElementById('kmErr').classList.add('show'); return;
   }
-  localStorage.setItem(KEY_STORE, v);
+  await idbSet(KEY_STORE, v);
+  _cachedKey = v;
   document.getElementById('keyInput').value = '';
   document.getElementById('keyModal').classList.add('hidden');
   updateKeyUI();
 }
 
-function saveKeyFromInfo() {
+async function saveKeyFromInfo() {
   const v = document.getElementById('infoKeyInput').value.trim();
   if (!v.startsWith('sk-ant-') || v.length < 20) return;
-  localStorage.setItem(KEY_STORE, v);
+  await idbSet(KEY_STORE, v);
+  _cachedKey = v;
   document.getElementById('infoKeyInput').value = '';
   updateKeyUI();
 }
@@ -1542,7 +1628,7 @@ Geef een bondige analyse in het Nederlands (max 150 woorden): samenvatting, wind
       })
     });
 
-    if (aiRes.status === 401) { localStorage.removeItem(KEY_STORE); updateKeyUI(); document.getElementById('keyModal').classList.remove('hidden'); throw new Error('API key ongeldig'); }
+    if (aiRes.status === 401) { await idbDelete(KEY_STORE); _cachedKey = ''; updateKeyUI(); document.getElementById('keyModal').classList.remove('hidden'); throw new Error('API key ongeldig'); }
     if (!aiRes.ok) { const e = await aiRes.json().catch(()=>{}); throw new Error(e?.error?.message || `Claude fout ${aiRes.status}`); }
 
     const aiData  = await aiRes.json();
@@ -1603,7 +1689,10 @@ Geef een bondige analyse in het Nederlands (max 150 woorden): samenvatting, wind
 }
 
 // ── INIT ─────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  // Laad key uit IndexedDB vóór alles (async, maar wacht erop)
+  await loadKeyIntoCache();
+
   updateKeyUI();
   if (!getKey()) setTimeout(() => document.getElementById('keyModal').classList.remove('hidden'), 800);
   renderSpotChips();
