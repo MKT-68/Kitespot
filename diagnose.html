@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KiteSpot Diag">
+<meta name="theme-color" content="#03080f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>KiteSpot — Opslag Diagnose</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #03080f;
+  color: #ddeeff;
+  font-family: 'Courier New', monospace;
+  padding: 20px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  min-height: 100dvh;
+}
+
+h1 {
+  font-size: 1.2rem;
+  color: #00ff88;
+  margin-bottom: 4px;
+  font-family: sans-serif;
+}
+
+.subtitle { font-size: 11px; color: rgba(221,238,255,0.4); margin-bottom: 24px; }
+
+.card {
+  background: #0a1422;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.card h2 {
+  font-size: 11px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: rgba(221,238,255,0.4);
+  margin-bottom: 12px;
+  font-family: sans-serif;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 12px;
+  gap: 12px;
+}
+
+.row:last-child { border-bottom: none; }
+.row-label { color: rgba(221,238,255,0.5); flex-shrink: 0; }
+
+.badge {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.ok    { background: rgba(0,255,136,0.12); color: #00ff88; }
+.warn  { background: rgba(255,204,0,0.12);  color: #ffcc00; }
+.fail  { background: rgba(255,68,68,0.12);  color: #ff4444; }
+.info  { background: rgba(77,166,255,0.12); color: #4da6ff; }
+
+.test-btn {
+  width: 100%;
+  padding: 14px;
+  background: #00ff88;
+  color: #03080f;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-family: sans-serif;
+}
+
+.test-btn:active { opacity: .8; }
+.test-btn.secondary {
+  background: #0a1422;
+  color: #00ff88;
+  border: 1px solid rgba(0,255,136,0.3);
+}
+
+.log {
+  background: #060e18;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.8;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-ok   { color: #00ff88; }
+.log-warn { color: #ffcc00; }
+.log-fail { color: #ff4444; }
+.log-info { color: #4da6ff; }
+.log-mute { color: rgba(221,238,255,0.35); }
+
+.conclusion {
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  font-family: sans-serif;
+  display: none;
+}
+
+.conclusion.show { display: block; }
+.conclusion.ok-c   { background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.25); }
+.conclusion.fail-c { background: rgba(255,68,68,0.08);  border: 1px solid rgba(255,68,68,0.25); }
+
+.conclusion h3 { font-size: 13px; margin-bottom: 8px; }
+.conclusion p  { font-size: 12px; color: rgba(221,238,255,0.7); }
+
+input[type=text] {
+  width: 100%;
+  background: #060e18;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: #ddeeff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  outline: none;
+  margin-bottom: 8px;
+}
+
+input[type=text]:focus { border-color: #00ff88; }
+</style>
+</head>
+<body>
+
+<h1>🪁 KiteSpot — Opslag Diagnose</h1>
+<p class="subtitle">Test welke opslag werkt op jouw iPhone</p>
+
+<!-- ENVIRONMENT INFO -->
+<div class="card">
+  <h2>Omgeving</h2>
+  <div class="row"><span class="row-label">Standalone PWA</span><span class="badge" id="env-standalone">...</span></div>
+  <div class="row"><span class="row-label">iOS versie</span><span class="badge info" id="env-ios">...</span></div>
+  <div class="row"><span class="row-label">Safari versie</span><span class="badge info" id="env-safari">...</span></div>
+  <div class="row"><span class="row-label">Origin</span><span class="badge info" id="env-origin" style="font-size:9px;max-width:180px;word-break:break-all;text-align:right">...</span></div>
+  <div class="row"><span class="row-label">Protocol</span><span class="badge" id="env-protocol">...</span></div>
+</div>
+
+<!-- STORAGE SUPPORT -->
+<div class="card">
+  <h2>Opslag ondersteuning</h2>
+  <div class="row"><span class="row-label">localStorage</span><span class="badge" id="sup-ls">...</span></div>
+  <div class="row"><span class="row-label">sessionStorage</span><span class="badge" id="sup-ss">...</span></div>
+  <div class="row"><span class="row-label">IndexedDB</span><span class="badge" id="sup-idb">...</span></div>
+  <div class="row"><span class="row-label">Cookies</span><span class="badge" id="sup-cookie">...</span></div>
+</div>
+
+<!-- WRITE/READ TEST -->
+<div class="card">
+  <h2>Schrijf + Lees test</h2>
+  <div class="row"><span class="row-label">localStorage</span><span class="badge" id="test-ls">wacht...</span></div>
+  <div class="row"><span class="row-label">sessionStorage</span><span class="badge" id="test-ss">wacht...</span></div>
+  <div class="row"><span class="row-label">IndexedDB</span><span class="badge" id="test-idb">wacht...</span></div>
+  <div class="row"><span class="row-label">Cookie</span><span class="badge" id="test-cookie">wacht...</span></div>
+</div>
+
+<!-- PERSISTENCE TEST -->
+<div class="card">
+  <h2>📋 Persistentie test (sluit en heropen app)</h2>
+  <p style="font-size:11px;color:rgba(221,238,255,0.4);margin-bottom:10px">Sla een testwaarde op, sluit de app volledig, open opnieuw en kijk of hij er nog is.</p>
+  <input type="text" id="persistInput" placeholder="Typ hier iets testwaarde...">
+  <button class="test-btn" onclick="savePersist()">💾 Opslaan in alle opslag</button>
+  <button class="test-btn secondary" onclick="readPersist()">🔍 Lees opgeslagen waarden</button>
+  <div class="log" id="persistLog">Nog niets opgeslagen...</div>
+</div>
+
+<!-- CONCLUSION -->
+<div class="conclusion" id="conclusion">
+  <h3 id="concl-title"></h3>
+  <p id="concl-body"></p>
+</div>
+
+<!-- LOG -->
+<div class="card">
+  <h2>Detail log</h2>
+  <div class="log" id="mainLog">Diagnose wordt uitgevoerd...</div>
+</div>
+
+<script>
+const DIAG_KEY = 'kitespot_diag_test';
+const PERSIST_KEY = 'kitespot_persist_test';
+
+function addLog(msg, type = 'info') {
+  const log = document.getElementById('mainLog');
+  const ts  = new Date().toLocaleTimeString('nl-NL');
+  log.innerHTML += `<span class="log-${type}">[${ts}] ${msg}\n</span>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+function setBadge(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'badge ' + cls;
+}
+
+// ── ENVIRONMENT ──────────────────────────────────────────────
+function detectEnvironment() {
+  const ua = navigator.userAgent;
+
+  // Standalone check
+  const isStandalone = window.navigator.standalone === true;
+  setBadge('env-standalone', isStandalone ? '✓ Ja — PWA modus' : '✗ Nee — gewone browser', isStandalone ? 'ok' : 'fail');
+  addLog(`Standalone PWA: ${isStandalone}`, isStandalone ? 'ok' : 'warn');
+
+  // iOS version
+  const iosMatch = ua.match(/OS (\d+)_(\d+)/);
+  const iosVer = iosMatch ? `${iosMatch[1]}.${iosMatch[2]}` : 'Onbekend';
+  setBadge('env-ios', `iOS ${iosVer}`, parseFloat(iosVer) >= 16.4 ? 'ok' : 'warn');
+  addLog(`iOS versie: ${iosVer}`, 'info');
+
+  // Safari version
+  const safariMatch = ua.match(/Version\/([\d.]+)/);
+  const safariVer = safariMatch ? safariMatch[1] : 'Onbekend';
+  setBadge('env-safari', `Safari ${safariVer}`, 'info');
+
+  // Origin
+  const origin = window.location.origin;
+  setBadge('env-origin', origin, 'info');
+  addLog(`Origin: ${origin}`, 'info');
+
+  // Protocol
+  const isHttps = location.protocol === 'https:';
+  setBadge('env-protocol', isHttps ? '✓ HTTPS' : '✗ ' + location.protocol, isHttps ? 'ok' : 'fail');
+  addLog(`Protocol: ${location.protocol}`, isHttps ? 'ok' : 'fail');
+}
+
+// ── STORAGE SUPPORT ───────────────────────────────────────────
+function detectSupport() {
+  // localStorage
+  try {
+    localStorage.setItem('__test__', '1');
+    localStorage.removeItem('__test__');
+    setBadge('sup-ls', '✓ Beschikbaar', 'ok');
+    addLog('localStorage: beschikbaar', 'ok');
+  } catch(e) {
+    setBadge('sup-ls', '✗ Geblokkeerd', 'fail');
+    addLog('localStorage: GEBLOKKEERD — ' + e.message, 'fail');
+  }
+
+  // sessionStorage
+  try {
+    sessionStorage.setItem('__test__', '1');
+    sessionStorage.removeItem('__test__');
+    setBadge('sup-ss', '✓ Beschikbaar', 'ok');
+  } catch(e) {
+    setBadge('sup-ss', '✗ Geblokkeerd', 'fail');
+  }
+
+  // IndexedDB
+  if (window.indexedDB) {
+    setBadge('sup-idb', '✓ API aanwezig', 'ok');
+    addLog('IndexedDB API: aanwezig', 'ok');
+  } else {
+    setBadge('sup-idb', '✗ Niet beschikbaar', 'fail');
+    addLog('IndexedDB: NIET beschikbaar', 'fail');
+  }
+
+  // Cookies
+  const cookiesEnabled = navigator.cookieEnabled;
+  setBadge('sup-cookie', cookiesEnabled ? '✓ Ingeschakeld' : '✗ Uitgeschakeld', cookiesEnabled ? 'ok' : 'fail');
+}
+
+// ── WRITE/READ TESTS ──────────────────────────────────────────
+function testLocalStorage() {
+  try {
+    localStorage.setItem(DIAG_KEY, 'test_waarde_123');
+    const val = localStorage.getItem(DIAG_KEY);
+    if (val === 'test_waarde_123') {
+      setBadge('test-ls', '✓ Werkt', 'ok');
+      addLog('localStorage schrijf+lees: OK', 'ok');
+    } else {
+      setBadge('test-ls', '✗ Lezen mislukt', 'fail');
+      addLog('localStorage: schrijven OK maar lezen geeft: ' + val, 'fail');
+    }
+  } catch(e) {
+    setBadge('test-ls', '✗ Fout: ' + e.message, 'fail');
+    addLog('localStorage fout: ' + e.message, 'fail');
+  }
+}
+
+function testSessionStorage() {
+  try {
+    sessionStorage.setItem(DIAG_KEY, 'test_ss_456');
+    const val = sessionStorage.getItem(DIAG_KEY);
+    setBadge('test-ss', val === 'test_ss_456' ? '✓ Werkt' : '✗ Lezen mislukt', val === 'test_ss_456' ? 'ok' : 'fail');
+  } catch(e) {
+    setBadge('test-ss', '✗ ' + e.message, 'fail');
+  }
+}
+
+function testCookie() {
+  try {
+    document.cookie = `${DIAG_KEY}=test_cookie_789; path=/; SameSite=Strict; max-age=86400`;
+    const val = document.cookie.split(';').find(c => c.trim().startsWith(DIAG_KEY));
+    if (val) {
+      setBadge('test-cookie', '✓ Werkt', 'ok');
+      addLog('Cookie schrijf+lees: OK', 'ok');
+    } else {
+      setBadge('test-cookie', '✗ Lezen mislukt', 'fail');
+      addLog('Cookie: schrijven OK maar niet terug te lezen', 'fail');
+    }
+  } catch(e) {
+    setBadge('test-cookie', '✗ ' + e.message, 'fail');
+    addLog('Cookie fout: ' + e.message, 'fail');
+  }
+}
+
+function testIndexedDB() {
+  if (!window.indexedDB) {
+    setBadge('test-idb', '✗ Niet beschikbaar', 'fail');
+    return;
+  }
+
+  const req = indexedDB.open('KiteSpotDiag', 1);
+  req.onupgradeneeded = e => {
+    e.target.result.createObjectStore('test');
+  };
+  req.onerror = () => {
+    setBadge('test-idb', '✗ Open mislukt', 'fail');
+    addLog('IndexedDB open: MISLUKT — ' + req.error, 'fail');
+    showConclusion();
+  };
+  req.onsuccess = e => {
+    const db = e.target.result;
+    const tx  = db.transaction('test', 'readwrite');
+    const store = tx.objectStore('test');
+    const writeReq = store.put('test_idb_abc', DIAG_KEY);
+    writeReq.onsuccess = () => {
+      const tx2 = db.transaction('test', 'readonly');
+      const readReq = tx2.objectStore('test').get(DIAG_KEY);
+      readReq.onsuccess = () => {
+        if (readReq.result === 'test_idb_abc') {
+          setBadge('test-idb', '✓ Werkt', 'ok');
+          addLog('IndexedDB schrijf+lees: OK', 'ok');
+        } else {
+          setBadge('test-idb', '✗ Lezen mislukt', 'fail');
+          addLog('IndexedDB: schrijven OK maar lezen geeft: ' + readReq.result, 'fail');
+        }
+        showConclusion();
+      };
+      readReq.onerror = () => {
+        setBadge('test-idb', '✗ Lezen fout', 'fail');
+        showConclusion();
+      };
+    };
+    writeReq.onerror = () => {
+      setBadge('test-idb', '✗ Schrijven fout', 'fail');
+      addLog('IndexedDB schrijven: MISLUKT', 'fail');
+      showConclusion();
+    };
+  };
+}
+
+// ── PERSISTENCE TEST ──────────────────────────────────────────
+function savePersist() {
+  const val = document.getElementById('persistInput').value.trim() || 'testwaarde_' + Date.now();
+  const log = document.getElementById('persistLog');
+  log.innerHTML = '';
+
+  // localStorage
+  try {
+    localStorage.setItem(PERSIST_KEY, val);
+    log.innerHTML += `<span class="log-ok">✓ localStorage: "${val}" opgeslagen\n</span>`;
+  } catch(e) {
+    log.innerHTML += `<span class="log-fail">✗ localStorage: ${e.message}\n</span>`;
+  }
+
+  // IndexedDB
+  if (window.indexedDB) {
+    const req = indexedDB.open('KiteSpotPersist', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => {
+      const db  = e.target.result;
+      const tx  = db.transaction('kv', 'readwrite');
+      const put = tx.objectStore('kv').put(val, PERSIST_KEY);
+      put.onsuccess = () => {
+        log.innerHTML += `<span class="log-ok">✓ IndexedDB: "${val}" opgeslagen\n</span>`;
+      };
+      put.onerror = () => {
+        log.innerHTML += `<span class="log-fail">✗ IndexedDB schrijven mislukt\n</span>`;
+      };
+    };
+  }
+
+  // Cookie (7 dagen)
+  document.cookie = `${PERSIST_KEY}=${encodeURIComponent(val)}; path=/; SameSite=Strict; max-age=604800`;
+  log.innerHTML += `<span class="log-ok">✓ Cookie: "${val}" opgeslagen (7 dagen)\n</span>`;
+  log.innerHTML += `<span class="log-warn">\n→ Sluit nu de app volledig en open hem opnieuw.\n→ Tik dan op "Lees opgeslagen waarden".\n</span>`;
+}
+
+function readPersist() {
+  const log = document.getElementById('persistLog');
+  log.innerHTML = '';
+
+  // localStorage
+  try {
+    const val = localStorage.getItem(PERSIST_KEY);
+    if (val) {
+      log.innerHTML += `<span class="log-ok">✓ localStorage: "${val}" — BEWAARD ✓\n</span>`;
+    } else {
+      log.innerHTML += `<span class="log-fail">✗ localStorage: LEEG — verdwenen na sluiten\n</span>`;
+    }
+  } catch(e) {
+    log.innerHTML += `<span class="log-fail">✗ localStorage fout: ${e.message}\n</span>`;
+  }
+
+  // Cookie
+  const cookieVal = document.cookie.split(';')
+    .find(c => c.trim().startsWith(PERSIST_KEY + '='));
+  if (cookieVal) {
+    const val = decodeURIComponent(cookieVal.split('=')[1]);
+    log.innerHTML += `<span class="log-ok">✓ Cookie: "${val}" — BEWAARD ✓\n</span>`;
+  } else {
+    log.innerHTML += `<span class="log-fail">✗ Cookie: LEEG — verdwenen na sluiten\n</span>`;
+  }
+
+  // IndexedDB
+  if (window.indexedDB) {
+    const req = indexedDB.open('KiteSpotPersist', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => {
+      const db  = e.target.result;
+      const tx  = db.transaction('kv', 'readonly');
+      const get = tx.objectStore('kv').get(PERSIST_KEY);
+      get.onsuccess = () => {
+        if (get.result) {
+          log.innerHTML += `<span class="log-ok">✓ IndexedDB: "${get.result}" — BEWAARD ✓\n</span>`;
+        } else {
+          log.innerHTML += `<span class="log-fail">✗ IndexedDB: LEEG — verdwenen na sluiten\n</span>`;
+        }
+      };
+    };
+    req.onerror = () => {
+      log.innerHTML += `<span class="log-fail">✗ IndexedDB: kon niet openen\n</span>`;
+    };
+  }
+}
+
+// ── CONCLUSION ────────────────────────────────────────────────
+function showConclusion() {
+  const lsOk  = document.getElementById('test-ls').classList.contains('ok');
+  const idbOk = document.getElementById('test-idb').classList.contains('ok');
+  const standalone = window.navigator.standalone === true;
+  const concl = document.getElementById('conclusion');
+  const title = document.getElementById('concl-title');
+  const body  = document.getElementById('concl-body');
+
+  concl.classList.add('show');
+
+  if (!standalone) {
+    concl.className = 'conclusion show fail-c';
+    title.textContent = '⚠️ Niet als PWA geopend';
+    body.textContent = 'De app wordt niet in standalone PWA-modus uitgevoerd. Opslag werkt niet persistent in een gewone Safari-tab. Ga naar: Deel-icoon → Zet op beginscherm → open altijd via dat icoon.';
+  } else if (idbOk || lsOk) {
+    concl.className = 'conclusion show ok-c';
+    title.style.color = '#00ff88';
+    title.textContent = '✓ Opslag werkt technisch';
+    body.textContent = `De opslag werkt correct in jouw omgeving (IndexedDB: ${idbOk ? 'OK' : 'FAIL'}, localStorage: ${lsOk ? 'OK' : 'FAIL'}). Doe nu de persistentie test: sla iets op, sluit de app volledig via de app-switcher, open opnieuw en lees de waarden.`;
+  } else {
+    concl.className = 'conclusion show fail-c';
+    title.textContent = '✗ Opslag niet beschikbaar';
+    body.textContent = 'Noch localStorage noch IndexedDB werkt. Waarschijnlijk staat "Alle cookies blokkeren" aan in Safari instellingen → Instellingen → Safari → Privacy → zet "Alle cookies blokkeren" UIT.';
+  }
+}
+
+// ── RUN ───────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  addLog('Diagnose gestart...', 'info');
+  detectEnvironment();
+  detectSupport();
+  testLocalStorage();
+  testSessionStorage();
+  testCookie();
+  testIndexedDB(); // async, toont conclusie als klaar
+});
+</script>
+</body>
+</html>
