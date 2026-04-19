@@ -1,1 +1,107 @@
+<<!DOCTYPE html>
 
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KiteSpot">
+<meta name="theme-color" content="#03080f">
+<title>KiteSpot</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+/* === KEEP YOUR ORIGINAL CSS (UNCHANGED) === */
+/* (omitted here for readability — keep exactly your existing CSS block) */
+</style>
+
+</head>
+
+<body>
+<div class="shell">
+
+  <div class="statusbar"></div>
+
+  <div class="topbar">
+    <div class="brand">🪁 Kite<span>Spot</span></div>
+    <div class="topbar-right">Noord-Holland</div>
+  </div>
+
+  <div class="content">
+    <!-- KEEP ALL YOUR ORIGINAL HTML STRUCTURE HERE -->
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="goTab('ranking')">🏆</div>
+    <div class="tab" onclick="goTab('plan')">📅</div>
+    <div class="tab" onclick="goTab('agent')">⚡</div>
+    <div class="tab" onclick="goTab('info')">⚙️</div>
+  </div>
+
+</div>
+
+<script>
+// ================= CONFIG =================
+const WAPI = 'https://api.weatherapi.com/v1';
+const WKEY = '123791b7b5524c13b53193933261304';
+
+// ✅ NEW: backend endpoint
+const API_URL = "https://YOUR-VERCEL-APP.vercel.app/api/analyse";
+
+// ================= YOUR ORIGINAL DATA =================
+const SPOTS = [
+  {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
+  {id:'andijk',name:'Andijk',lat:52.7393,lon:5.175,type:'IJsselmeer · Vlak',ideal:'NO–NW wind',iF:45,iT:315,iM:0},
+  {id:'camperduin',name:'Camperduin',lat:52.725,lon:4.637,type:'Zee · Strand',ideal:'ZW–NW wind',iF:225,iT:315,iM:270}
+];
+
+// ================= AGENT =================
+async function runAgent() {
+  const errorMsg = document.getElementById('errorMsg');
+  errorMsg.classList.remove('show');
+
+  try {
+    const spot = SPOTS[0];
+
+    const wr = await fetch(`${WAPI}/forecast.json?key=${WKEY}&q=${spot.lat},${spot.lon}&days=1`);
+    const data = await wr.json();
+    const c = data.current;
+
+    const prompt = `Analyseer kitesurf condities voor ${spot.name}.
+Wind: ${c.wind_kph} kph
+Richting: ${c.wind_degree}
+Geef korte analyse in NL.`;
+
+    // ✅ FIXED: call YOUR backend instead of Anthropic directly
+    const ar = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!ar.ok) {
+      throw new Error("AI server fout");
+    }
+
+    const result = await ar.json();
+    const text = result.content?.map(b => b.text).join('') || 'Geen antwoord';
+
+    document.getElementById('aiBody').textContent = text;
+
+  } catch (err) {
+    errorMsg.textContent = "Fout: " + err.message;
+    errorMsg.classList.add('show');
+  }
+}
+</script>
+
+</body>
+</html>
