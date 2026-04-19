@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KiteSpot">
+<meta name="theme-color" content="#03080f">
+<title>KiteSpot Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Inline manifest + apple-touch-icon via Blob — geen extern bestand nodig
+(function(){
+  var ico='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAAEmUlEQVR42u3dwY7rNgwFUAFv011/u3/drtvOS2JFtnTJA3iZQSjyhNI4sjJ+/fGn68U1/v5LEl7lp7OMtRdAuPzMAqmmgB6ubk9MowkawQB0uVQiBOhyVYQN0EwNjAKgRm4qjWtIsTEWB9Tt5krWeEdKKpvfKwcInZqpGPKFUR1A9MQlZ8gORtmA0IlO2pAIhlIBRdA5P7y9ORwaTwHiG+McqiLUJECJJWHoCEChxcgNuxSg9A1fofEXAVRGD0MbAMXd5inzsM4zAQ96Lulh6DlAVfUw9ASg2noYuhdQBz0M3QUo8tGCBk+/3xTzoKfPoRx3xDzoaXWwy/KYBz0M7QcUuims7elSC8Me9DB0BKDmenKTsBkQPc0NDQvnzoa+j3lY+mhC34Q9TF4MbQBED0PzgCx9LIbmAdHD0AJAJi8T2Qwg7UcTWgCInvKGbgFED0PzgExeJrIFgOjRhGYA9dkkz9DVio967edYPYlpXACIHoYAAmgTIHoYeh1tHUBBeuKyOgmIHobeMqgAKFRPVnovA0o/zxCgZ+4JDe2HoW+aUDagAnqC8nwBED0MfUgCIIBWA6KHoc8NRQIqqScl7fGACuuJyPwbQPQwdMkQQAC1AdREz/kl+C0gehi6aigDUEM9h9ciCVBbPSeXAyCAVgOih6EJQ0cDQudMQxmAoDnWUAAgXE409AMg7QegOUND+2GoFCBEIgwdCgiOFEMAAVQOEBZBhv4FiB6G5kt2AiAUEg2dAgiCUEMAAZQPSPlzDe0HpPDRhjYDUvJ0QzsBKXYBQwABlAlImWsY2gNIgcsY2gBIaSsZAgigFdWkh6GvaqoD0WMKc/UAxJD/whiix51oegBytQbEkG/jGbIfyI5EeuyJdtlUDwFADHkuzJOp9EwCYogep3PQAxBAADHkhDKG6AkHxNDhen4ApAkB5KR6egBi6Hg9SYAYOrkofi+MHj84BxBADAXpSQX0y682RwBiiJ5LesIA9TF0eP4BAug2QAzR87meSEC1DZ2f9gqAqhqKyPl7QAzR8zkJgAC6ARBD9HyIIRtQDUMpSZ4BxBA9r0Mdc+4A0n7qAMo1FJTbGUAM0fM21DqAsgxlpXQeEEP0vHkNQADdC4ghetYAYqibnmWA4prQmYbisvfRK5eTZKiGnsWANCHt51tADNGzBhBDJq9JQIlNaK+hxERd+5MHkAJUtf3MAGKInm8BmchMXt8CYoieNYAYqqFnAyCLoc5LnzWATGSdJ681gBjqrGclIIZaLX1WAmKorZ5lgCyoe+pZCaizobZ6FgPqaaiznvWAuhlqrucWQK024TfXcxegJobouRFQeUP03A6osCF6HgJU0hA9jwKKM1TpWJYHoh3FxnO3IXr2APpPVUINZYX90DsW/nCsNaTxHAEo1JBQDwIUNJ1lBbklzqE8b4NE/FBAcStrjec4QAylJ23ICDoVAGEUmpwhTfSUAoRRViqG3Bl+WUChXym0Gu+QVmNsAag2o+CHPWTcKDoC+t2uHWEDVHP/V4EjGSoDersbVTAALd4en/52AJ31rMWLwjc5NAigh0h15vL/6x/zXTifCBkUgAAAAABJRU5ErkJggg==';
+  var m={name:'KiteSpot Checker',short_name:'KiteSpot',start_url:location.href.split('?')[0],display:'standalone',background_color:'#03080f',theme_color:'#03080f',orientation:'portrait-primary',icons:[{src:ico,sizes:'192x192',type:'image/png',purpose:'any maskable'}]};
+  var l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));document.head.appendChild(l);
+  var al=document.createElement('link');al.rel='apple-touch-icon';al.href=ico;document.head.appendChild(al);
+})();
+</script>
+<style>
+:root{
+  --void:#03080f;--base:#060e18;--panel:#0a1422;--panel2:#0e1c2e;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --green:#00ff88;--green-pale:rgba(0,255,136,0.1);
+  --amber:#ffcc00;--amber-pale:rgba(255,204,0,0.1);
+  --red:#ff4444;--red-pale:rgba(255,68,68,0.1);--blue:#4da6ff;
+  --foam:#ddeeff;--muted:rgba(221,238,255,0.4);--muted2:rgba(221,238,255,0.18);
+  --cond:'Barlow Condensed',sans-serif;--sans:'Barlow',sans-serif;
+  --tab-h:72px;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--foam);font-family:var(--sans)}
+
+/* ── INSTALL SCREEN ── */
+.install-screen{position:fixed;inset:0;background:var(--void);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(var(--safe-top)+24px) 24px calc(var(--safe-bot)+32px);text-align:center}
+.install-screen.hidden{display:none}
+.install-icon{font-size:3rem;margin:20px 0 14px}
+.install-screen h1{font-family:var(--cond);font-size:1.8rem;font-weight:800;text-transform:uppercase;margin-bottom:6px;color:var(--foam);letter-spacing:.02em}
+.install-screen h1 span{color:var(--green)}
+.install-subtitle{font-size:12px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+.install-steps{width:100%;max-width:340px;text-align:left;margin-bottom:20px;background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.install-step{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-bottom:1px solid var(--border)}
+.install-step:last-child{border-bottom:none}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--green);color:var(--void);font-family:var(--cond);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:13px;line-height:1.6;color:var(--foam)}
+.step-text strong{color:var(--green)}
+.step-text em{color:var(--amber);font-style:normal;font-size:11px}
+.install-warning{background:rgba(255,204,0,0.08);border:1px solid rgba(255,204,0,0.25);border-radius:10px;padding:14px 16px;font-size:12px;color:rgba(255,204,0,0.9);line-height:1.6;max-width:340px;width:100%;margin-bottom:16px;text-align:left}
+.install-warning strong{color:var(--amber)}
+.skip-btn{font-family:var(--cond);font-size:13px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:20px;cursor:pointer;padding:10px 20px;margin-top:4px}
+
+/* ── KEY SCREEN ── */
+.key-screen{position:fixed;inset:0;background:rgba(3,8,15,0.96);z-index:9998;display:flex;align-items:flex-end;padding-bottom:var(--safe-bot)}
+.key-screen.hidden{display:none}
+.key-sheet{background:var(--panel);border:1px solid var(--border2);border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%}
+.key-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 20px}
+.key-screen h2{font-family:var(--cond);font-size:1.4rem;font-weight:800;text-transform:uppercase;margin-bottom:6px;color:var(--foam)}
+.key-screen p{font-family:var(--cond);font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+.key-screen p a{color:var(--green)}
+.key-input-row{display:flex;gap:8px;margin-bottom:8px}
+.key-input-row input{flex:1;background:var(--base);border:1px solid var(--border2);border-radius:10px;padding:13px 14px;font-family:'Courier New',monospace;font-size:13px;color:var(--foam);outline:none;-webkit-appearance:none}
+.key-input-row input:focus{border-color:var(--green)}
+.key-save-btn{padding:13px 18px;background:var(--green);color:var(--void);border:none;border-radius:10px;font-family:var(--cond);font-size:15px;font-weight:800;cursor:pointer;white-space:nowrap}
+.key-err{font-family:var(--cond);font-size:11px;color:var(--red);display:none;margin-bottom:8px}
+.key-err.show{display:block}
+.key-note{font-family:var(--cond);font-size:10px;color:var(--muted2);line-height:1.6;padding:10px 12px;background:var(--base);border-radius:8px;margin-top:10px}
+
+/* ── SHELL ── */
+.shell{display:flex;flex-direction:column;height:100%;height:100dvh}
+.topbar{background:var(--base);border-bottom:1px solid var(--border);padding:calc(var(--safe-top)+16px) 16px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10}
+.brand{display:flex;align-items:center;gap:8px}
+.brand-name{font-family:var(--cond);font-size:1.4rem;font-weight:800;text-transform:uppercase;color:var(--foam)}
+.brand-name span{color:var(--green)}
+.key-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--panel);font-family:var(--cond);font-size:11px;color:var(--muted);cursor:pointer}
+.key-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0}
+.key-dot.off{background:var(--red);box-shadow:none}
+
+/* ── PAGES ── */
+.pages{flex:1;overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(var(--tab-h) + var(--safe-bot) + 16px);display:none;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s}
+.page.active{display:block;opacity:1;transform:translateY(0)}
+
+/* ── TABS ── */
+.tabs{flex-shrink:0;background:var(--base);border-top:1px solid var(--border);display:flex;height:calc(var(--tab-h) + var(--safe-bot));padding-bottom:var(--safe-bot);z-index:10}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:opacity .15s}
+.tab:active{opacity:.7}
+.tab-icon{font-size:1.3rem;line-height:1}
+.tab-label{font-family:var(--cond);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tab.active .tab-label{color:var(--green)}
+.tab.active .tab-icon{filter:drop-shadow(0 0 4px var(--green))}
+
+/* ── SHARED ── */
+.stitle{font-family:var(--cond);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border)}
+.skel{background:linear-gradient(90deg,var(--panel) 25%,var(--panel2) 50%,var(--panel) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:10px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.error-box{display:none;background:var(--red-pale);border:1px solid var(--red);border-radius:8px;padding:12px;font-family:var(--cond);font-size:12px;color:var(--red);margin-bottom:12px}
+.error-box.show{display:block}
+
+/* ── RANKING ── */
+.ranking-ts{font-family:var(--cond);font-size:10px;color:var(--muted);margin-bottom:12px}
+.rank-cards{display:flex;flex-direction:column;gap:10px}
+.rank-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;position:relative;overflow:hidden;cursor:pointer;transition:transform .1s}
+.rank-card:active{transform:scale(.98)}
+.rank-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;border-radius:10px 0 0 10px}
+.rank-card.goed::before{background:var(--green)}.rank-card.matig::before{background:var(--amber)}.rank-card.slecht::before{background:var(--red)}
+.rc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.rc-name{font-family:var(--cond);font-size:1.3rem;font-weight:800;text-transform:uppercase;color:var(--foam);margin-bottom:2px}
+.rc-type{font-family:var(--cond);font-size:11px;color:var(--muted);margin-bottom:6px}
+.rc-score{font-family:var(--cond);font-size:2rem;font-weight:800;line-height:1}
+.rank-card.goed .rc-score{color:var(--green)}.rank-card.matig .rc-score{color:var(--amber)}.rank-card.slecht .rc-score{color:var(--red)}
+.rc-score-label{font-family:var(--cond);font-size:10px;color:var(--muted)}
+.rc-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rc-stat{background:var(--panel2);border-radius:6px;padding:7px 10px}
+.rc-stat-label{font-family:var(--cond);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.rc-stat-val{font-family:var(--cond);font-size:1rem;font-weight:700;color:var(--foam)}
+.rc-dir-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-family:var(--cond);display:inline-block;margin-top:4px}
+.rc-dir-badge.ideal{background:var(--green-pale);color:var(--green)}.rc-dir-badge.ok{background:var(--amber-pale);color:var(--amber)}.rc-dir-badge.bad{background:var(--red-pale);color:var(--red)}
+.rc-cta{margin-top:10px;font-family:var(--cond);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--green);text-align:right}
+
+/* ── PLANNER ── */
+.plan-ts{font-family:var(--cond);font-size:10px;color:var(--muted);margin-bottom:12px}
+.plan-spot-block{margin-bottom:20px}
+.plan-spot-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--panel2);border:1px solid var(--border2);border-bottom:none;border-radius:8px 8px 0 0;flex-wrap:wrap;gap:4px}
+.psh-name{font-family:var(--cond);font-size:1rem;font-weight:800;text-transform:uppercase;color:var(--foam)}
+.psh-ideal{font-family:var(--cond);font-size:10px;color:var(--green)}.psh-count{font-family:var(--cond);font-size:10px;color:var(--muted)}
+.plan-no-moments{padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:0 0 8px 8px;font-family:var(--cond);font-size:11px;color:var(--muted);font-style:italic}
+.plan-table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:0 0 8px 8px;overflow:hidden}
+.plan-table{width:100%;border-collapse:collapse}
+.plan-table thead th{padding:6px 10px;text-align:left;background:var(--panel);border-bottom:1px solid var(--border2);font-family:var(--cond);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.plan-table tbody tr{border-bottom:1px solid var(--border)}.plan-table tbody tr:last-child{border-bottom:none}
+.plan-table tbody tr.day-sep td{padding-top:10px;border-top:1px solid var(--border2)}
+.plan-table tbody td{padding:6px 10px;font-family:var(--cond);font-size:12px}
+.td-date{color:var(--muted);font-size:10px}.td-time{color:var(--amber);font-weight:700}.td-wind{color:var(--green);font-weight:700}.td-dir{color:var(--blue)}
+
+/* ── AGENT ── */
+.spot-scroll{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
+.spot-scroll::-webkit-scrollbar{display:none}
+.spot-chip{flex-shrink:0;padding:8px 14px;background:var(--panel);border:1.5px solid var(--border);border-radius:20px;cursor:pointer}
+.spot-chip.selected{border-color:var(--green);background:var(--green-pale)}
+.spot-chip-name{font-family:var(--cond);font-size:13px;font-weight:700;text-transform:uppercase;color:var(--foam);display:block}
+.spot-chip-ideal{font-family:var(--cond);font-size:10px;color:var(--muted)}
+.spot-chip.selected .spot-chip-ideal{color:var(--green)}
+.map-wrap{border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin-bottom:14px;position:relative}
+#spotMap{width:100%;height:220px}
+.wind-overlay-mobile{position:absolute;top:10px;right:10px;z-index:1000;background:rgba(6,14,24,0.92);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;display:none;align-items:center;gap:8px;pointer-events:none}
+.wind-overlay-mobile.show{display:flex}
+.wom-info{display:flex;flex-direction:column;gap:1px}
+.wom-kn{font-family:var(--cond);font-size:1.2rem;font-weight:800;color:var(--foam);line-height:1}
+.wom-dir{font-family:var(--cond);font-size:10px;color:var(--muted)}
+.wom-label{font-family:var(--cond);font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.1em}
+.run-btn{width:100%;padding:16px;background:var(--green);color:var(--void);border:none;border-radius:12px;font-family:var(--cond);font-size:1.15rem;font-weight:800;text-transform:uppercase;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s,background .2s}
+.run-btn:active{transform:scale(.98);background:#00dd77}.run-btn:disabled{background:var(--panel2);color:var(--muted)}
+.agent-log{background:var(--base);border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin-bottom:14px;display:none}.agent-log.show{display:block}
+.log-header{padding:8px 12px;background:var(--panel2);display:flex;align-items:center;gap:8px;font-family:var(--cond);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.log-spinner{width:8px;height:8px;border:1.5px solid var(--green);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.log-lines{padding:10px 12px;display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto}
+.log-line{font-family:var(--cond);font-size:11px;color:var(--muted2);line-height:1.5}
+.ll-time{color:var(--muted2);margin-right:6px}.ll-tool{color:var(--blue);margin-right:4px}.ll-ok{color:var(--green)}.ll-data{color:var(--foam)}.ll-think{color:var(--amber);font-style:italic}.ll-err{color:var(--red)}
+.result-panel{display:none}.result-panel.show{display:block}
+.verdict-card{border-radius:12px;padding:16px;border:1px solid;margin-bottom:14px;display:flex;align-items:center;gap:14px}
+.verdict-card.goed{border-color:rgba(0,255,136,.3);background:var(--green-pale)}
+.verdict-card.matig{border-color:rgba(255,204,0,.3);background:var(--amber-pale)}
+.verdict-card.slecht{border-color:rgba(255,68,68,.3);background:var(--red-pale)}
+.vc-emoji{font-size:2rem}.vc-body{flex:1}
+.vc-label{font-family:var(--cond);font-size:1.5rem;font-weight:800;text-transform:uppercase;line-height:1;margin-bottom:2px}
+.verdict-card.goed .vc-label{color:var(--green)}.verdict-card.matig .vc-label{color:var(--amber)}.verdict-card.slecht .vc-label{color:var(--red)}
+.vc-spot{font-family:var(--cond);font-size:11px;color:var(--muted)}
+.vc-score{font-family:var(--cond);font-size:2.5rem;font-weight:800;line-height:1}
+.verdict-card.goed .vc-score{color:var(--green)}.verdict-card.matig .vc-score{color:var(--amber)}.verdict-card.slecht .vc-score{color:var(--red)}
+.vc-score-label{font-family:var(--cond);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.data-tile{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.dt-src{font-family:var(--cond);font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:var(--green);margin-bottom:2px}
+.dt-label{font-family:var(--cond);font-size:10px;color:var(--muted);margin-bottom:2px}
+.dt-val{font-family:var(--cond);font-size:1.3rem;font-weight:700;color:var(--foam);line-height:1}
+.dt-unit{font-family:var(--cond);font-size:10px;color:var(--muted)}.dt-sub{font-family:var(--cond);font-size:10px;color:var(--muted);margin-top:2px}
+.gear-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.gear-chip{padding:6px 12px;border:1px solid rgba(0,255,136,.3);background:var(--green-pale);border-radius:20px;font-family:var(--cond);font-size:11px;color:var(--green)}
+.analysis-block{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.ab-header{padding:8px 12px;background:var(--panel2);border-bottom:1px solid var(--border);font-family:var(--cond);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.ab-body{padding:12px;font-size:13px;line-height:1.7;color:var(--foam);white-space:pre-wrap}
+
+/* ── INFO ── */
+.info-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+.info-card h3{font-family:var(--cond);font-size:1rem;font-weight:700;text-transform:uppercase;color:var(--green);margin-bottom:8px;letter-spacing:.05em}
+.info-card p{font-family:var(--cond);font-size:12px;color:var(--muted);line-height:1.6}
+.info-spot-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.info-spot-row:last-child{border-bottom:none}
+.isr-name{font-family:var(--cond);font-size:13px;font-weight:700;text-transform:uppercase;color:var(--foam)}
+.isr-right{text-align:right}.isr-ideal{font-family:var(--cond);font-size:10px;color:var(--green)}.isr-type{font-family:var(--cond);font-size:10px;color:var(--muted)}
+.change-key-btn{width:100%;padding:14px;background:var(--panel);color:var(--green);border:1px solid rgba(0,255,136,.3);border-radius:10px;font-family:var(--cond);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<!-- ══ INSTALLATIE SCHERM ══════════════════════════════════════ -->
+<div class="install-screen" id="installScreen">
+  <div class="install-icon">🪁</div>
+  <h1>Kite<span>Spot</span> Checker</h1>
+  <p class="install-subtitle">Installeer de app op je beginscherm zodat je API key permanent wordt opgeslagen</p>
+
+  <div class="install-steps">
+    <div class="install-step">
+      <div class="step-num">1</div>
+      <div class="step-text">Tik het <strong>Deel-icoon □↑</strong> onderaan in Safari</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">2</div>
+      <div class="step-text">Scroll naar beneden en tik <strong>"Zet op beginscherm"</strong><br><em>(niet "Voeg toe aan favorieten")</em></div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">3</div>
+      <div class="step-text">Tik rechtsboven op <strong>"Voeg toe"</strong></div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">4</div>
+      <div class="step-text">Open de app <strong>altijd via het beginscherm-icoon</strong> — nooit via Safari direct</div>
+    </div>
+  </div>
+
+  <div class="install-warning">
+    <strong>⚠️ Belangrijk:</strong> Open je de app via Safari of een bookmark? Dan wordt de API key gewist zodra je de browser sluit. Via het beginscherm-icoon blijft alles bewaard.
+  </div>
+
+  <button class="skip-btn" onclick="skipInstall()">Al geïnstalleerd — ga verder →</button>
+</div>
+
+<!-- ══ KEY SCHERM ══════════════════════════════════════════════ -->
+<div class="key-screen hidden" id="keyScreen">
+  <div class="key-sheet">
+    <div class="key-handle"></div>
+    <h2>🔑 Claude API Key</h2>
+    <p>Eenmalig invoeren — daarna onthouden. Haal je key op via <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys → Create Key.</p>
+    <div class="key-input-row">
+      <input type="password" id="keyInput" placeholder="sk-ant-api03-..." autocomplete="off" inputmode="text" onkeydown="if(event.key==='Enter')saveKey()">
+      <button class="key-save-btn" onclick="saveKey()">Opslaan</button>
+    </div>
+    <div class="key-err" id="keyErr">Ongeldige key — begint met sk-ant-</div>
+    <div class="key-note">🔒 Opgeslagen in cookie (365 dagen) + IndexedDB + localStorage voor maximale persistentie. De key verlaat je apparaat niet — hij gaat rechtstreeks naar api.anthropic.com.</div>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════════════ -->
+<div class="shell" id="appShell" style="display:none">
+  <div class="topbar">
+    <div class="brand">
+      <span style="font-size:1.3rem">🪁</span>
+      <span class="brand-name">Kite<span>Spot</span></span>
+    </div>
+    <div class="key-btn" onclick="showKeyScreen()">
+      <div class="key-dot" id="keyDot"></div>
+      <span id="keyBtnLabel">Key</span>
+    </div>
+  </div>
+
+  <div class="pages">
+    <!-- RANKING -->
+    <div class="page active" id="page-ranking">
+      <div class="stitle"><span>🏆 Top 3 beste spots nu</span></div>
+      <div class="ranking-ts" id="rankTs">Weerdata ophalen...</div>
+      <div id="rankCards" class="rank-cards">
+        <div class="skel" style="height:150px"></div>
+        <div class="skel" style="height:150px"></div>
+        <div class="skel" style="height:150px"></div>
+      </div>
+    </div>
+
+    <!-- PLANNER -->
+    <div class="page" id="page-plan">
+      <div class="stitle"><span>📅 Kitebare momenten — 7 dagen</span></div>
+      <div class="plan-ts" id="planTs">Voorspelling ophalen...</div>
+      <div id="planBody">
+        <div class="skel" style="height:44px;margin-bottom:6px;border-radius:8px 8px 0 0"></div>
+        <div class="skel" style="height:80px;margin-bottom:14px;border-radius:0 0 8px 8px"></div>
+        <div class="skel" style="height:44px;margin-bottom:6px;border-radius:8px 8px 0 0"></div>
+        <div class="skel" style="height:80px;border-radius:0 0 8px 8px"></div>
+      </div>
+    </div>
+
+    <!-- AGENT -->
+    <div class="page" id="page-agent">
+      <div class="stitle"><span>📍 Spot kiezen</span></div>
+      <div class="spot-scroll" id="spotScroll"></div>
+      <div class="map-wrap">
+        <div id="spotMap"></div>
+        <div class="wind-overlay-mobile" id="windOverlay">
+          <canvas id="windCanvas" width="44" height="44"></canvas>
+          <div class="wom-info">
+            <span class="wom-kn" id="womKn">—</span>
+            <span class="wom-dir" id="womDir">—</span>
+            <span class="wom-label">Wind</span>
+          </div>
+        </div>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="runAgent()">⚡ Analyseer deze spot</button>
+      <div class="error-box" id="errorBox"></div>
+      <div class="agent-log" id="agentLog">
+        <div class="log-header"><div class="log-spinner"></div><span>Agent aan het werk...</span></div>
+        <div class="log-lines" id="logLines"></div>
+      </div>
+      <div class="result-panel" id="resultPanel">
+        <div class="verdict-card goed" id="verdictCard">
+          <div class="vc-emoji" id="vcEmoji">🤙</div>
+          <div class="vc-body"><div class="vc-label" id="vcLabel">Goed</div><div class="vc-spot" id="vcSpot">—</div></div>
+          <div><div class="vc-score" id="vcScore">—</div><div class="vc-score-label">/10</div></div>
+        </div>
+        <div class="stitle"><span>Live data</span></div>
+        <div class="data-grid" id="dataGrid"></div>
+        <div class="stitle"><span>Materiaal</span></div>
+        <div class="gear-row" id="gearRow"></div>
+        <div class="stitle"><span>AI Analyse</span></div>
+        <div class="analysis-block">
+          <div class="ab-header">🤖 Claude</div>
+          <div class="ab-body" id="abBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="page" id="page-info">
+      <button class="change-key-btn" onclick="showKeyScreen()">🔑 Claude API Key wijzigen</button>
+      <div class="stitle"><span>📍 Spots</span></div>
+      <div class="info-card" id="infoSpots"></div>
+      <div class="stitle"><span>ℹ️ Over</span></div>
+      <div class="info-card">
+        <h3>KiteSpot Checker</h3>
+        <p>Weerdata: WeatherAPI.com<br>AI analyse: Claude van Anthropic<br>Kaart: OpenStreetMap via Leaflet</p>
+      </div>
+      <div class="info-card">
+        <h3>Score berekening</h3>
+        <p>Windrichting: max 5 pt (primair)<br>Windsterkte 12–25 kn: max 3 pt<br>Gusty/neerslag correctie: max -2 pt</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-ranking" onclick="showPage('ranking')"><span class="tab-icon">🏆</span><span class="tab-label">Ranking</span></div>
+    <div class="tab" id="tab-plan" onclick="showPage('plan')"><span class="tab-icon">📅</span><span class="tab-label">Planner</span></div>
+    <div class="tab" id="tab-agent" onclick="showPage('agent')"><span class="tab-icon">⚡</span><span class="tab-label">Analyse</span></div>
+    <div class="tab" id="tab-info" onclick="showPage('info')"><span class="tab-icon">⚙️</span><span class="tab-label">Info</span></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const WAPI_KEY  = '123791b7b5524c13b53193933261304';
+const WAPI_BASE = 'https://api.weatherapi.com/v1';
+const KEY_NAME  = 'ks_claude_key';
+
+const SPOTS = [
+  {id:'andijk',        name:'Andijk',        lat:52.7393,lon:5.175,  type:'IJsselmeer · Vlak', ideal:'NO–NW wind', idealFrom:45, idealTo:315,idealMid:0,   level:'Beginner+'},
+  {id:'camperduin',    name:'Camperduin',    lat:52.725, lon:4.637,  type:'Zee · Strand',      ideal:'ZW–NW wind', idealFrom:225,idealTo:315,idealMid:270, level:'Intermediate+'},
+  {id:'hondenhemel',   name:'Hondenhemel',   lat:52.6855,lon:5.246,  type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  idealFrom:45, idealTo:180,idealMid:113, level:'Beginner+'},
+  {id:'edam',          name:'Edam',          lat:52.515, lon:5.075,  type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  idealFrom:0,  idealTo:135,idealMid:68,  level:'Beginner+'},
+  {id:'ijmuiden',      name:'IJmuiden',      lat:52.455, lon:4.558,  type:'Zee · Strand',      ideal:'ZW–NW wind', idealFrom:225,idealTo:315,idealMid:270, level:'Intermediate+'},
+  {id:'schellinkhout', name:'Schellinkhout', lat:52.633, lon:5.121,  type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', idealFrom:135,idealTo:225,idealMid:180, level:'Alle niveaus'},
+  {id:'medemblik',     name:'Medemblik',     lat:52.755, lon:5.124,  type:'IJsselmeer · Vlak', ideal:'N–O wind',   idealFrom:0,  idealTo:90, idealMid:45,  level:'Beginner+'},
+  {id:'warden',        name:'Warder',        lat:52.533, lon:5.060,  type:'Markermeer · Vlak', ideal:'NO–ZO wind', idealFrom:45, idealTo:135,idealMid:90,  level:'Beginner+'},
+];
+const NL_DAYS=['zo','ma','di','wo','do','vr','za'];
+const NL_MONTHS=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+let selectedSpot=SPOTS.find(s=>s.id==='schellinkhout');
+let map=null,spotMarker=null,windAnimFrame=null;
+
+// ── KEY STORAGE: cookie + localStorage + IndexedDB ───────────
+let _key='';
+
+function setCookie(n,v,days){
+  const exp=new Date(Date.now()+days*864e5).toUTCString();
+  document.cookie=`${n}=${encodeURIComponent(v)};expires=${exp};path=/;SameSite=Strict`;
+}
+function getCookie(n){
+  const m=document.cookie.split(';').find(c=>c.trim().startsWith(n+'='));
+  return m?decodeURIComponent(m.split('=').slice(1).join('=')):null;
+}
+
+async function idbOp(mode,cb){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('KiteSpotDB',1);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore('kv');
+    r.onsuccess=e=>{try{cb(e.target.result,res,rej);}catch(err){res(null);}};
+    r.onerror=()=>res(null);
+  });
+}
+async function idbGet(k){return idbOp('readonly',(db,res)=>{const r=db.transaction('kv','readonly').objectStore('kv').get(k);r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});}
+async function idbSet(k,v){return idbOp('readwrite',(db,res)=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k).onsuccess=()=>res();});}
+
+async function loadKey(){
+  // Cookie (meest betrouwbaar op iOS — overleeft app-herstart)
+  const c=getCookie(KEY_NAME);
+  if(c&&c.startsWith('sk-ant-')){
+    _key=c;
+    // Sync naar andere lagen
+    try{localStorage.setItem(KEY_NAME,c);}catch{}
+    await idbSet(KEY_NAME,c);
+    return;
+  }
+  // localStorage
+  try{
+    const l=localStorage.getItem(KEY_NAME);
+    if(l&&l.startsWith('sk-ant-')){
+      _key=l;setCookie(KEY_NAME,l,365);await idbSet(KEY_NAME,l);return;
+    }
+  }catch{}
+  // IndexedDB
+  const i=await idbGet(KEY_NAME);
+  if(i&&i.startsWith('sk-ant-')){
+    _key=i;setCookie(KEY_NAME,i,365);try{localStorage.setItem(KEY_NAME,i);}catch{}
+  }
+}
+
+async function saveKeyToAll(v){
+  _key=v;
+  setCookie(KEY_NAME,v,365);
+  try{localStorage.setItem(KEY_NAME,v);}catch{}
+  await idbSet(KEY_NAME,v);
+}
+
+function getKey(){return _key;}
+
+// ── KEY UI ────────────────────────────────────────────────────
+function saveKey(){
+  const v=document.getElementById('keyInput').value.trim();
+  if(!v.startsWith('sk-ant-')||v.length<20){document.getElementById('keyErr').classList.add('show');return;}
+  document.getElementById('keyErr').classList.remove('show');
+  document.getElementById('keyInput').value='';
+  saveKeyToAll(v).then(()=>{
+    updateKeyUI();
+    document.getElementById('keyScreen').classList.add('hidden');
+  });
+}
+
+function showKeyScreen(){
+  document.getElementById('keyScreen').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('keyInput').focus(),300);
+}
+
+function updateKeyUI(){
+  const k=getKey();
+  document.getElementById('keyDot').className='key-dot'+(k?'':' off');
+  document.getElementById('keyBtnLabel').textContent=k?k.slice(0,8)+'···':'Geen key';
+}
+
+// ── INSTALL SCREEN ────────────────────────────────────────────
+function skipInstall(){
+  document.getElementById('installScreen').classList.add('hidden');
+  document.getElementById('appShell').style.display='flex';
+  if(!getKey()) showKeyScreen();
+  initAppOnce();
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function showPage(n){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+n).classList.add('active');
+  document.getElementById('tab-'+n).classList.add('active');
+  if(n==='agent')setTimeout(()=>map&&map.invalidateSize(),300);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function kphToKn(k){return parseFloat((k*0.539957).toFixed(1));}
+function windDir(d){return['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];}
+function dirScore(deg,spot){
+  const cw=(spot.idealTo-spot.idealFrom+360)%360;
+  const half=(cw<=180?cw:360-cw)/2;
+  let d=Math.abs(deg-spot.idealMid);if(d>180)d=360-d;
+  return Math.max(0,1-Math.max(0,d-half)/60);
+}
+function evalSpot(w,spot){
+  const ds=dirScore(w.wind_dir,spot),dp=Math.round(ds*5);
+  const wn=w.wind_kn,wp=wn>=16&&wn<=25?3:wn>=12&&wn<=30?2:wn>=10&&wn<=32?1:0;
+  let cor=0;const gr=w.gusts_kn/Math.max(wn,1);
+  if(gr>1.5)cor-=2;else if(gr>1.3)cor-=1;if(w.precipitation>2)cor-=1;
+  const score=Math.max(1,Math.min(10,dp+wp+cor));
+  return{score,verdict:score>=7?'goed':score>=4?'matig':'slecht',dp,wp,ds,dirLabel:ds>=0.85?'✓ Ideaal':ds>=0.5?'~ Acceptabel':'✗ Ongunstig'};
+}
+function inRange(deg,spot){return dirScore(deg,spot)>0;}
+function gearTips(kn){
+  if(kn<12)return['17–19m kite','Board 145cm+'];
+  if(kn<16)return['14–16m kite','Board 138–142cm'];
+  if(kn<22)return['12–14m kite','Board 136–140cm'];
+  if(kn<28)return['10–12m kite','Board 132–137cm'];
+  return['7–9m kite','Board 128–134cm','⚠️ Sterk wind'];
+}
+function dayLabel(ds){
+  const[y,m,d]=ds.split('-').map(Number),dt=new Date(y,m-1,d),now=new Date();now.setHours(0,0,0,0);
+  const diff=Math.round((dt-now)/86400000);
+  if(diff===0)return`vandaag · ${d} ${NL_MONTHS[m-1]}`;
+  if(diff===1)return`morgen · ${d} ${NL_MONTHS[m-1]}`;
+  return`${NL_DAYS[dt.getDay()]} · ${d} ${NL_MONTHS[m-1]}`;
+}
+
+// ── RANKING ───────────────────────────────────────────────────
+async function buildRanking(){
+  const results=await Promise.all(SPOTS.map(async spot=>{
+    try{
+      const r=await fetch(`${WAPI_BASE}/current.json?key=${WAPI_KEY}&q=${spot.lat},${spot.lon}&aqi=no`);
+      if(!r.ok)return null;
+      const c=(await r.json()).current;
+      const w={wind_kn:kphToKn(c.wind_kph),gusts_kn:kphToKn(c.gust_kph),wind_dir:c.wind_degree,temp_c:c.temp_c,precipitation:c.precip_mm};
+      return{spot,w,...evalSpot(w,spot)};
+    }catch{return null;}
+  }));
+  const ranked=results.filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,3);
+  const medals=['🥇','🥈','🥉'];
+  const now=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('rankTs').textContent=`${now} · WeatherAPI`;
+  const container=document.getElementById('rankCards');container.innerHTML='';
+  if(!ranked.length){container.innerHTML='<div style="color:var(--muted);font-family:var(--cond);font-size:12px;padding:20px;text-align:center">Kon geen weerdata ophalen</div>';return;}
+  ranked.forEach((r,i)=>{
+    const dc=r.ds>=0.85?'var(--green)':r.ds>=0.5?'var(--amber)':'var(--red)';
+    const stab=r.w.gusts_kn/r.w.wind_kn<=1.2?'Stabiel':r.w.gusts_kn/r.w.wind_kn<=1.4?'Licht gusty':'Gusty';
+    const card=document.createElement('div');card.className=`rank-card ${r.verdict}`;
+    card.innerHTML=`<div class="rc-top"><div><div style="font-size:1.2rem">${medals[i]}</div><div class="rc-name">${r.spot.name}</div><div class="rc-type">${r.spot.type}</div></div><div style="text-align:right"><div class="rc-score">${r.score}</div><div class="rc-score-label">/10</div></div></div><div class="rc-stats"><div class="rc-stat"><div class="rc-stat-label">Richting</div><div class="rc-stat-val" style="color:${dc}">${windDir(r.w.wind_dir)}</div><span class="rc-dir-badge ${r.ds>=0.85?'ideal':r.ds>=0.5?'ok':'bad'}">${r.dirLabel}</span></div><div class="rc-stat"><div class="rc-stat-label">Wind</div><div class="rc-stat-val">${r.w.wind_kn} kn</div><div style="font-family:var(--cond);font-size:10px;color:var(--muted)">${stab}</div></div></div><div class="rc-cta">Tik voor analyse →</div>`;
+    card.onclick=()=>{selectedSpot=r.spot;renderChips();updateMapSpot(r.spot);showPage('agent');};
+    container.appendChild(card);
+  });
+}
+
+// ── PLANNER ───────────────────────────────────────────────────
+async function buildPlanning(){
+  const results=await Promise.all(SPOTS.map(async spot=>{
+    try{
+      const r=await fetch(`${WAPI_BASE}/forecast.json?key=${WAPI_KEY}&q=${spot.lat},${spot.lon}&days=7&aqi=no&alerts=no`);
+      if(!r.ok)return{spot,moments:[]};
+      const data=await r.json();const now=new Date(),moments=[];
+      data.forecast.forecastday.forEach(fd=>{
+        fd.hour.forEach(h=>{
+          const[dp,tp]=h.time.split(' ');
+          const[yr,mo,dy]=dp.split('-').map(Number),[hr]=tp.split(':').map(Number);
+          const dt=new Date(yr,mo-1,dy,hr);if(dt<=now)return;
+          const kn=kphToKn(h.wind_kph),deg=h.wind_degree;
+          if(kn<12||!inRange(deg,spot))return;
+          moments.push({dt,datePart:dp,kn:Math.round(kn),deg});
+        });
+      });
+      return{spot,moments};
+    }catch{return{spot,moments:[]};}
+  }));
+  const now=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('planTs').textContent=`${now} · WeatherAPI · ≥12 kn + ideale richting`;
+  const body=document.getElementById('planBody');body.innerHTML='';
+  results.forEach(({spot,moments})=>{
+    const block=document.createElement('div');block.className='plan-spot-block';
+    const count=moments.length>0?`${moments.length} moment${moments.length!==1?'en':''}`:'geen';
+    block.innerHTML=`<div class="plan-spot-header"><span class="psh-name">${spot.name}</span><span class="psh-ideal">${spot.ideal}</span><span class="psh-count">${count}</span></div>`;
+    if(!moments.length){block.innerHTML+=`<div class="plan-no-moments">Geen kitebare momenten de komende 7 dagen.</div>`;}
+    else{
+      const byDay={};moments.forEach(m=>{if(!byDay[m.datePart])byDay[m.datePart]=[];byDay[m.datePart].push(m);});
+      let html=`<div class="plan-table-wrap"><table class="plan-table"><thead><tr><th>Dag</th><th>Tijd</th><th>kn</th><th>Richting</th></tr></thead><tbody>`;
+      Object.entries(byDay).forEach(([day,ms])=>{ms.forEach((m,idx)=>{const t=`${String(m.dt.getHours()).padStart(2,'0')}:00`;html+=`<tr${idx===0?' class="day-sep"':''}><td class="td-date">${idx===0?dayLabel(day):''}</td><td class="td-time">${t}</td><td class="td-wind">${m.kn}</td><td class="td-dir">${windDir(m.deg)}</td></tr>`;});});
+      html+=`</tbody></table></div>`;block.innerHTML+=html;
+    }
+    body.appendChild(block);
+  });
+}
+
+// ── MAP ───────────────────────────────────────────────────────
+function initMap(){
+  map=L.map('spotMap',{center:[selectedSpot.lat,selectedSpot.lon],zoom:12,zoomControl:false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:18}).addTo(map);
+  const ico=L.divIcon({className:'',html:`<div style="width:12px;height:12px;background:#00ff88;border:2px solid rgba(3,8,15,.8);border-radius:50%;box-shadow:0 0 8px #00ff88"></div>`,iconSize:[12,12],iconAnchor:[6,6]});
+  spotMarker=L.marker([selectedSpot.lat,selectedSpot.lon],{icon:ico}).addTo(map).bindTooltip(`<b>${selectedSpot.name}</b>`,{direction:'top',offset:[0,-8]});
+}
+function updateMapSpot(spot){
+  if(!map)return;
+  map.flyTo([spot.lat,spot.lon],12,{duration:.8});
+  spotMarker.setLatLng([spot.lat,spot.lon]);
+  spotMarker.setTooltipContent(`<b>${spot.name}</b>`);
+  document.getElementById('windOverlay').classList.remove('show');
+}
+function drawArrow(deg,kn){
+  const cv=document.getElementById('windCanvas');if(!cv)return;
+  const ctx=cv.getContext('2d'),cx=22,cy=22,r=19;
+  ctx.clearRect(0,0,44,44);
+  ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.fillStyle='rgba(0,255,136,0.08)';ctx.fill();ctx.strokeStyle='#00ff88';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='rgba(221,238,255,0.25)';ctx.font='6px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('N',cx,cy-r+6);ctx.fillText('Z',cx,cy+r-6);ctx.fillText('W',cx-r+6,cy);ctx.fillText('O',cx+r-6,cy);
+  const rad=((deg+180)*Math.PI)/180;ctx.save();ctx.translate(cx,cy);ctx.rotate(rad);
+  ctx.beginPath();ctx.moveTo(0,11);ctx.lineTo(0,-8);ctx.strokeStyle='#00ff88';ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(-4,-6);ctx.lineTo(4,-6);ctx.closePath();ctx.fillStyle='#00ff88';ctx.fill();
+  ctx.restore();
+}
+function showWindArrow(kn,deg){
+  document.getElementById('womKn').textContent=kn+' kn';
+  document.getElementById('womDir').textContent=windDir(deg)+' '+deg+'°';
+  document.getElementById('windOverlay').classList.add('show');
+  if(windAnimFrame)cancelAnimationFrame(windAnimFrame);
+  const amp=Math.min(8,kn*0.3);let t=0;
+  function loop(ts){t=ts*0.0008;drawArrow(deg+Math.sin(t)*amp,kn);windAnimFrame=requestAnimationFrame(loop);}
+  windAnimFrame=requestAnimationFrame(loop);
+}
+
+// ── SPOT CHIPS ────────────────────────────────────────────────
+function renderChips(){
+  const sc=document.getElementById('spotScroll');sc.innerHTML='';
+  SPOTS.forEach(spot=>{
+    const chip=document.createElement('div');chip.className='spot-chip'+(spot.id===selectedSpot.id?' selected':'');
+    chip.innerHTML=`<span class="spot-chip-name">${spot.name}</span><span class="spot-chip-ideal">${spot.ideal}</span>`;
+    chip.onclick=()=>{selectedSpot=spot;renderChips();updateMapSpot(spot);document.getElementById('resultPanel').classList.remove('show');document.getElementById('agentLog').classList.remove('show');document.getElementById('errorBox').classList.remove('show');};
+    sc.appendChild(chip);
+  });
+  sc.querySelector('.selected')?.scrollIntoView({inline:'center',behavior:'smooth'});
+}
+function renderInfoSpots(){
+  const c=document.getElementById('infoSpots');c.innerHTML='<h3>Kite Spots</h3>';
+  SPOTS.forEach(s=>{c.innerHTML+=`<div class="info-spot-row"><span class="isr-name">${s.name}</span><div class="isr-right"><div class="isr-ideal">${s.ideal}</div><div class="isr-type">${s.type}</div></div></div>`;});
+}
+
+// ── AGENT LOG ────────────────────────────────────────────────
+function log(type,msg){
+  const lines=document.getElementById('logLines');
+  const time=new Date().toTimeString().slice(0,8);
+  const div=document.createElement('div');div.className='log-line';
+  const m={tool:`<span class="ll-tool">[TOOL]</span><span class="ll-data">${msg}</span>`,ok:`<span class="ll-ok">✓</span> <span class="ll-data">${msg}</span>`,think:`<span class="ll-think">⟳ ${msg}</span>`,err:`<span class="ll-err">✗ ${msg}</span>`};
+  div.innerHTML=`<span class="ll-time">${time}</span>${m[type]||msg}`;
+  lines.appendChild(div);lines.scrollTop=lines.scrollHeight;
+}
+
+// ── AGENT ────────────────────────────────────────────────────
+async function runAgent(){
+  const key=getKey();
+  if(!key){showKeyScreen();return;}
+  // Log key status voor debugging (toon alleen eerste/laatste karakters)
+  log('think',`Key geladen: ${key.slice(0,12)}···${key.slice(-4)} (${key.length} tekens)`);
+  const btn=document.getElementById('runBtn');btn.disabled=true;
+  document.getElementById('errorBox').classList.remove('show');
+  document.getElementById('resultPanel').classList.remove('show');
+  document.getElementById('logLines').innerHTML='';
+  document.getElementById('agentLog').classList.add('show');
+  log('think',`Agent gestart voor ${selectedSpot.name}`);
+  try{
+    log('tool',`weatherapi.com → ${selectedSpot.lat},${selectedSpot.lon}`);
+    const wr=await fetch(`${WAPI_BASE}/forecast.json?key=${WAPI_KEY}&q=${selectedSpot.lat},${selectedSpot.lon}&days=1&aqi=no`);
+    if(!wr.ok)throw new Error(`WeatherAPI fout ${wr.status}`);
+    const c=(await wr.json()).current;
+    const w={wind_kn:kphToKn(c.wind_kph),gusts_kn:kphToKn(c.gust_kph),wind_dir:c.wind_degree,temp_c:c.temp_c,precipitation:c.precip_mm};
+    log('ok',`Wind: ${w.wind_kn} kn · gusts: ${w.gusts_kn} kn · ${windDir(w.wind_dir)}`);
+    const ev=evalSpot(w,selectedSpot);
+    log('ok',`Score: ${ev.score}/10 → ${ev.verdict.toUpperCase()}`);
+
+    const prompt=`Je bent een expert kitesurf-coach. Analyseer de condities voor ${selectedSpot.name} (${selectedSpot.type}).
+LIVE DATA: Wind ${w.wind_kn} kn | Stoten ${w.gusts_kn} kn | Richting ${w.wind_dir}° (${windDir(w.wind_dir)}) | Ideaal: ${selectedSpot.ideal} | Richtingsscore: ${ev.dirLabel} | Temp ${w.temp_c}°C | Score ${ev.score}/10 (${ev.verdict.toUpperCase()})
+Geef een bondige analyse in het Nederlands (max 150 woorden): samenvatting, windanalyse, timing advies, 1-2 aandachtspunten. Geen headers.`;
+
+    log('think','Prompt naar Claude...');
+    const ar=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:prompt}]})
+    });
+    if(!ar.ok){
+      let errMsg='Claude fout '+ar.status;
+      try{
+        const errData=await ar.json();
+        const errType=errData?.error?.type||'';
+        const errText=errData?.error?.message||'';
+        if(ar.status===401||errType==='authentication_error'){
+          errMsg='Authenticatie mislukt ('+ar.status+'). Controleer of de key geldig is via console.anthropic.com';
+        } else if(ar.status===403){
+          errMsg='Toegang geweigerd (403). Mogelijk verloopt de key of heeft hij onvoldoende rechten.';
+        } else if(ar.status===429){
+          errMsg='Te veel aanvragen (429). Wacht even en probeer opnieuw.';
+        } else if(ar.status===529||ar.status===503){
+          errMsg='Claude API tijdelijk overbelast. Probeer het over een minuut opnieuw.';
+        } else if(errText){
+          errMsg=errText;
+        }
+      }catch{}
+      throw new Error(errMsg);
+    }
+    const analysis=(await ar.json()).content.map(b=>b.text||'').join('');
+    log('ok','Analyse ontvangen');
+
+    document.getElementById('agentLog').classList.remove('show');
+    const now=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+    const emojis={goed:'🤙',matig:'⚠️',slecht:'⛔'},labels={goed:'Go!',matig:'Twijfel',slecht:'Stay Home'};
+    const vc=document.getElementById('verdictCard');vc.className=`verdict-card ${ev.verdict}`;
+    document.getElementById('vcEmoji').textContent=emojis[ev.verdict];
+    document.getElementById('vcLabel').textContent=labels[ev.verdict];
+    document.getElementById('vcSpot').textContent=`${selectedSpot.name} · ${now}`;
+    document.getElementById('vcScore').textContent=ev.score;
+
+    const grid=document.getElementById('dataGrid');grid.innerHTML='';
+    [{src:'WeatherAPI',label:'Wind',val:w.wind_kn,unit:'kn',sub:''},{src:'WeatherAPI',label:'Stoten',val:w.gusts_kn,unit:'kn',sub:`${(w.gusts_kn/w.wind_kn).toFixed(2)}x`},{src:'WeatherAPI',label:'Richting',val:windDir(w.wind_dir),unit:'',sub:`${w.wind_dir}°`},{src:'WeatherAPI',label:'Temp',val:w.temp_c,unit:'°C',sub:''},{src:'Score',label:'Richting',val:`${ev.dp}/5`,unit:'',sub:ev.dirLabel},{src:'Score',label:'Totaal',val:ev.score,unit:'/10',sub:ev.verdict.toUpperCase()}].forEach(t=>{
+      grid.innerHTML+=`<div class="data-tile"><div class="dt-src">${t.src}</div><div class="dt-label">${t.label}</div><div class="dt-val">${t.val}<span class="dt-unit">${t.unit}</span></div>${t.sub?`<div class="dt-sub">${t.sub}</div>`:''}</div>`;
+    });
+    document.getElementById('gearRow').innerHTML=gearTips(w.wind_kn).map(g=>`<div class="gear-chip">🪁 ${g}</div>`).join('');
+    document.getElementById('abBody').textContent=analysis;
+    showWindArrow(w.wind_kn,w.wind_dir);
+    document.getElementById('resultPanel').classList.add('show');
+    document.getElementById('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(err){
+    log('err',err.message);
+    document.getElementById('agentLog').classList.remove('show');
+    document.getElementById('errorBox').textContent='Fout: '+err.message;
+    document.getElementById('errorBox').classList.add('show');
+  }finally{btn.disabled=false;}
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+let appInitialized=false;
+function initAppOnce(){
+  if(appInitialized)return;appInitialized=true;
+  renderChips();renderInfoSpots();
+  setTimeout(()=>initMap(),150);
+  buildRanking();buildPlanning();
+}
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  await loadKey();
+  updateKeyUI();
+
+  const isStandalone=window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
+
+  if(isStandalone){
+    // Geïnstalleerde PWA — sla installatiescherm over
+    document.getElementById('installScreen').classList.add('hidden');
+    document.getElementById('appShell').style.display='flex';
+    if(!getKey())setTimeout(()=>showKeyScreen(),400);
+    initAppOnce();
+  } else {
+    // Gewone browser — toon installatie-instructies
+    document.getElementById('installScreen').classList.remove('hidden');
+    document.getElementById('appShell').style.display='none';
+  }
+});
+</script>
+</body>
+</html>
