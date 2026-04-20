@@ -530,13 +530,33 @@ function goTab(name) {
 
 // ── RANKING ──────────────────────────────────────────────────
 async function loadRanking() {
-  const rows = await Promise.all(SPOTS.map(async spot => {
-    try {
-      const r = await fetch(`${WAPI}/current.json?key=${WKEY}&q=${spot.lat},${spot.lon}&aqi=no`);
-      if (!r.ok) return null;
-      const c = (await r.json()).current;
-      const w = { kn:kn(c.wind_kph), gust:kn(c.gust_kph), dir:c.wind_degree, rain:c.precip_mm };
-      return { spot, w, ...score(w, spot) };
+  const r = await fetch("/api/analyse?type=weather", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    lat: spot.lat,
+    lon: spot.lon,
+    days: 1
+  })
+});
+
+const data = await r.json();
+
+if (!r.ok || data.error) {
+  console.error("Weather error:", data);
+  return null;
+}
+
+const c = data.current;
+
+const w = {
+  kn: kn(c.wind_kph),
+  gust: kn(c.gust_kph),
+  dir: c.wind_degree,
+  rain: c.precip_mm
+};
+
+return { spot, w, ...score(w, spot) };
     } catch { return null; }
   }));
 
@@ -585,12 +605,26 @@ async function loadRanking() {
 
 // ── PLANNER ──────────────────────────────────────────────────
 async function loadPlanning() {
-  const results = await Promise.all(SPOTS.map(async spot => {
-    try {
-      const r = await fetch(`${WAPI}/forecast.json?key=${WKEY}&q=${spot.lat},${spot.lon}&days=7&aqi=no&alerts=no`);
-      if (!r.ok) return { spot, moments:[] };
-      const now = new Date(), moments = [];
-      (await r.json()).forecast.forecastday.forEach(fd => {
+  const r = await fetch("/api/analyse?type=weather", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    lat: spot.lat,
+    lon: spot.lon,
+    days: 7
+  })
+});
+
+const data = await r.json();
+
+if (!r.ok || data.error) {
+  console.error("Weather error:", data);
+  return { spot, moments: [] };
+}
+
+const now = new Date(), moments = [];
+
+data.forecast.forecastday.forEach(fd => {
         fd.hour.forEach(h => {
           const [dp,tp] = h.time.split(' ');
           const [yr,mo,dy] = dp.split('-').map(Number);
@@ -728,8 +762,23 @@ lg('think', Agent gestart voor ${sel.name});
 try {
 // 1. Weather
 lg('tool', WeatherAPI → ${sel.lat},${sel.lon});
-const wr = await fetch(${WAPI}/forecast.json?key=${WKEY}&q=${sel.lat},${sel.lon}&days=1);
-const c = (await wr.json()).current;
+const wr = await fetch("/api/analyse?type=weather", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    lat: sel.lat,
+    lon: sel.lon,
+    days: 1
+  })
+});
+
+const data = await wr.json();
+
+if (!wr.ok || data.error) {
+  throw new Error(data.error?.message || "Weather API fout");
+}
+
+const c = data.current;
 
 const w = {
   kn: kn(c.wind_kph),
