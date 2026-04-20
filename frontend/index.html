@@ -636,10 +636,7 @@ async function loadPlanning() {  // ✅ FIX: wrapped in function
 
         data.forecast.forecastday.forEach(fd => {
           fd.hour.forEach(h => {
-            const [dp,tp] = h.time.split(' ');
-            const [yr,mo,dy] = dp.split('-').map(Number);
-            const [hr] = tp.split(':').map(Number);
-            const dt = new Date(yr,mo-1,dy,hr);
+            const dt = new Date(h.time);
             if (dt <= now) return;
 
             const wkn = kn(h.wind_kph);
@@ -663,8 +660,8 @@ async function loadPlanning() {  // ✅ FIX: wrapped in function
       }
     }));
 
-    const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
-    document.getElementById('planTs').textContent = `${now} · WeatherAPI · ≥12 kn + ideale richting`;
+    document.getElementById('planTs').textContent =
+      new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
 
     const body = document.getElementById('planBody');
     body.innerHTML = '';
@@ -692,6 +689,9 @@ async function loadPlanning() {  // ✅ FIX: wrapped in function
     }
     body.appendChild(block);
   });
+  } catch (err) {
+    document.getElementById('planTs').textContent = "Planner fout";
+  }
 }
 
 // ── MAP ──────────────────────────────────────────────────────
@@ -845,5 +845,3 @@ window.addEventListener('DOMContentLoaded', () => {
   loadPlanning(); // ✅ NOW WORKS
 });
 </script> 
-</body>
-</html>
