@@ -1,94 +1,20 @@
-<!DOCTYPE html>
-
-<html lang="nl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>KiteSpot</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<style>
-/* (UNCHANGED CSS — kept exactly as you wrote it) */
-body { background:#03080f; color:white; font-family:sans-serif; }
-</style>
-
-</head>
-
-<body>
-
-<h2>KiteSpot Debug Build</h2>
-
-<div id="rankTs">Weerdata ophalen...</div>
-<div id="rankBody"></div>
+<!-- ONLY the JavaScript section is shown below.
+Replace your existing <script>...</script> with this -->
 
 <script>
-// ── CONFIG ─────────────────────────────────────
+// ── CONFIG ──────────────────────────────────────────────────
 const API_URL = "/api/analyse"; // ✅ FIXED
 
-// ── SPOTS ──────────────────────────────────────
-const SPOTS = [
-  {name:'Schellinkhout',lat:52.633,lon:5.121},
-  {name:'Andijk',lat:52.7393,lon:5.175},
-];
+// ── START ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  renderChips();
+  renderInfoSpots();
+  setTimeout(() => initMap(), 200);
+  loadRanking();
+  loadPlanning(); // ✅ now valid
+});
 
-// ── HELPERS ────────────────────────────────────
-function kn(kph){ return +(kph * 0.539957).toFixed(1); }
-
-// ── RANKING ────────────────────────────────────
-async function loadRanking() {
-  try {
-    const rows = await Promise.all(SPOTS.map(async spot => {
-      try {
-        const r = await fetch("/api/analyse?type=weather", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lat: spot.lat,
-            lon: spot.lon,
-            days: 1
-          })
-        });
-
-        const data = await r.json();
-
-        if (!r.ok || data.error) {
-          console.error("Weather error:", data);
-          return null;
-        }
-
-        return {
-          name: spot.name,
-          wind: kn(data.current.wind_kph)
-        };
-
-      } catch (e) {
-        console.error("Fetch failed:", e);
-        return null;
-      }
-    }));
-
-    const valid = rows.filter(Boolean);
-
-    if (!valid.length) {
-      document.getElementById("rankTs").textContent = "Geen data beschikbaar";
-      return;
-    }
-
-    document.getElementById("rankTs").textContent = "Live data geladen";
-
-    document.getElementById("rankBody").innerHTML =
-      valid.map(r => `<div>${r.name}: ${r.wind} kn</div>`).join("");
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById("rankTs").textContent = "Fout bij laden";
-  }
-}
-
-// ── PLANNER (FIXED: no top-level await) ────────
+// ── PLANNER ──────────────────────────────────────────────────
 async function loadPlanning() {
   try {
     const results = await Promise.all(SPOTS.map(async spot => {
@@ -99,59 +25,150 @@ async function loadPlanning() {
           body: JSON.stringify({
             lat: spot.lat,
             lon: spot.lon,
-            days: 3
+            days: 7
           })
         });
 
         const data = await r.json();
+        if (!r.ok || data.error) return { spot, moments: [] };
 
-        if (!r.ok || data.error) return null;
+        const now = new Date(), moments = [];
 
-        return {
-          name: spot.name,
-          days: data.forecast.forecastday.length
-        };
+        data.forecast.forecastday.forEach(fd => {
+          fd.hour.forEach(h => {
+            const dt = new Date(h.time);
+            if (dt <= now) return;
+
+            const wkn = kn(h.wind_kph);
+            const deg = h.wind_degree;
+
+            if (wkn < 12 || dscore(deg, spot) <= 0) return;
+
+            moments.push({
+              dt,
+              dp: h.time.split(' ')[0],
+              kn: Math.round(wkn),
+              deg
+            });
+          });
+        });
+
+        return { spot, moments };
 
       } catch (e) {
-        console.error("Planner error:", e);
-        return null;
+        console.error("Planner fetch failed", e);
+        return { spot, moments: [] };
       }
     }));
 
-    console.log("Planner results:", results);
+    const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
+    document.getElementById('planTs').textContent = `${now} · WeatherAPI · ≥12 kn + ideale richting`;
+
+    const body = document.getElementById('planBody');
+    body.innerHTML = '';
+
+    results.forEach(({ spot, moments }) => {
+      const block = document.createElement('div');
+      block.className = 'spot-block';
+
+      const cnt = moments.length > 0
+        ? `${moments.length} moment${moments.length!==1?'en':''}`
+        : 'geen';
+
+      block.innerHTML =
+        `<div class="spot-block-hdr">
+          <span class="sbh-name">${spot.name}</span>
+          <span class="sbh-ideal">${spot.ideal}</span>
+          <span class="sbh-count">${cnt}</span>
+        </div>`;
+
+      if (!moments.length) {
+        block.innerHTML += `<div class="no-moments">Geen kitebare momenten.</div>`;
+      } else {
+        const byDay = {};
+        moments.forEach(m => {
+          if (!byDay[m.dp]) byDay[m.dp]=[];
+          byDay[m.dp].push(m);
+        });
+
+        let t = `<div class="plan-tbl-wrap"><table class="plan-tbl"><tbody>`;
+
+        Object.entries(byDay).forEach(([day, ms]) => {
+          ms.forEach(m => {
+            const time = `${String(m.dt.getHours()).padStart(2,'0')}:00`;
+            t += `<tr>
+              <td>${day}</td>
+              <td>${time}</td>
+              <td>${m.kn}</td>
+              <td>${compass(m.deg)}</td>
+            </tr>`;
+          });
+        });
+
+        t += `</tbody></table></div>`;
+        block.innerHTML += t;
+      }
+
+      body.appendChild(block);
+    });
 
   } catch (err) {
-    console.error("Planner crash:", err);
+    console.error("Planner crash", err);
   }
 }
 
-// ── AGENT (FIXED URL) ──────────────────────────
+// ── AGENT ────────────────────────────────────────────────────
 async function runAgent() {
+  const btn = document.getElementById('analyseBtn');
+  btn.disabled = true;
+
+  lg('think', `Agent gestart voor ${sel.name}`); // ✅ FIXED TEMPLATE STRING
+
   try {
-    const res = await fetch(API_URL, {
+    const wr = await fetch("/api/analyse?type=weather", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({
-        model: "claude-sonnet-4",
-        messages: [{role:"user", content:"Test analyse"}]
+        lat: sel.lat,
+        lon: sel.lon,
+        days: 1
       })
     });
 
-    const data = await res.json();
+    const data = await wr.json();
+    if (!wr.ok || data.error) {
+      throw new Error(data.error?.message || "Weather fout");
+    }
 
-    console.log("AI response:", data);
+    const c = data.current;
+
+    const prompt = `Analyseer kitesurf condities voor ${sel.name}.
+Wind: ${c.wind_kph}
+Richting: ${c.wind_degree}`;
+
+    const ar = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const result = await ar.json();
+
+    document.getElementById('aiBody').textContent =
+      result.content?.map(b => b.text).join('') || 'Geen antwoord';
+
+    document.getElementById('resultPanel').classList.add('show');
 
   } catch (err) {
-    console.error("Agent error:", err);
+    console.error(err);
+    document.getElementById('errorMsg').textContent = err.message;
+    document.getElementById('errorMsg').classList.add('show');
+  } finally {
+    btn.disabled = false;
   }
 }
-
-// ── START ──────────────────────────────────────
-window.addEventListener("DOMContentLoaded", () => {
-  loadRanking();
-  loadPlanning();
-});
 </script>
-
-</body>
-</html>
