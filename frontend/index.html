@@ -563,7 +563,7 @@ async function loadRanking() {
     }));
 
     const top3 = rows.filter(Boolean).sort((a,b) => b.s - a.s).slice(0, 3);
-
+    const medals = ['🥇','🥈','🥉'];
     const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
     document.getElementById('rankTs').textContent = `${now} · WeatherAPI`;
 
@@ -575,11 +575,38 @@ async function loadRanking() {
       return;
     }
 
-    top3.forEach((r) => {
-      const card = document.createElement('div');
-      card.className = `rank-card ${r.v}`;
-      card.innerHTML = `<div class="rc-name">${r.spot.name}</div>`;
-      body.appendChild(card);
+ top3.forEach((r, i) => {
+    const dc = r.ds>=0.85 ? 'var(--green)' : r.ds>=0.5 ? 'var(--amber)' : 'var(--red)';
+    const stab = r.w.gust/r.w.kn <= 1.2 ? 'Stabiel' : r.w.gust/r.w.kn <= 1.4 ? 'Licht gusty' : 'Gusty';
+    const card = document.createElement('div');
+    card.className = `rank-card ${r.v}`;
+    card.innerHTML = `
+      <div class="rc-header">
+        <div>
+          <div style="font-size:1.2rem">${medals[i]}</div>
+          <div class="rc-name">${r.spot.name}</div>
+          <div class="rc-type">${r.spot.type}</div>
+        </div>
+        <div>
+          <div class="rc-score">${r.s}</div>
+          <div class="rc-score-sub">/10</div>
+        </div>
+      </div>
+      <div class="rc-grid">
+        <div class="rc-cell">
+          <div class="rc-cell-label">Richting</div>
+          <div class="rc-cell-val" style="color:${dc}">${compass(r.w.dir)}</div>
+          <span class="dir-badge ${r.ds>=0.85?'ideal':r.ds>=0.5?'ok':'bad'}">${r.dirLabel}</span>
+        </div>
+        <div class="rc-cell">
+          <div class="rc-cell-label">Wind</div>
+          <div class="rc-cell-val">${r.w.kn} kn</div>
+          <div style="font-family:var(--cond);font-size:10px;color:var(--muted)">${stab}</div>
+        </div>
+      </div>
+      <div class="rc-cta">Tik voor analyse →</div>`;
+     card.onclick = () => { sel = r.spot; renderChips(); updateMap(r.spot); goTab('agent'); };
+     body.appendChild(card);
     });
 
   } catch (err) {
@@ -641,10 +668,27 @@ async function loadPlanning() {  // ✅ FIX: wrapped in function
 
     results.forEach(({ spot, moments }) => {
       const block = document.createElement('div');
-      block.innerHTML = `<div>${spot.name} (${moments.length})</div>`;
-      body.appendChild(block);
-    });
+      block.className = 'spot-block';
+      const cnt = moments.length > 0 ? `${moments.length} moment${moments.length!==1?'en':''}` : 'geen';
+      block.innerHTML = `<div class="spot-block-hdr"><span class="sbh-name">${spot.name}</span><span class="sbh-ideal">${spot.ideal}</span><span class="sbh-count">${cnt}</span></div>`;
 
+     if (!moments.length) {
+      block.innerHTML += `<div class="no-moments">Geen kitebare momenten de komende 7 dagen.</div>`;
+     } else {
+      const byDay = {};
+      moments.forEach(m => { if (!byDay[m.dp]) byDay[m.dp]=[]; byDay[m.dp].push(m); });
+      let t = `<div class="plan-tbl-wrap"><table class="plan-tbl"><thead><tr><th>Dag</th><th>Tijd</th><th>kn</th><th>Richting</th></tr></thead><tbody>`;
+      Object.entries(byDay).forEach(([day, ms]) => {
+        ms.forEach((m, i) => {
+          const time = `${String(m.dt.getHours()).padStart(2,'0')}:00`;
+          t += `<tr${i===0?' class="day-sep"':''}><td class="td-date">${i===0?dayLbl(day):''}</td><td class="td-time">${time}</td><td class="td-wind">${m.kn}</td><td class="td-dir">${compass(m.deg)}</td></tr>`;
+        });
+      });
+      t += `</tbody></table></div>`;
+      block.innerHTML += t;
+    }
+    body.appendChild(block);
+  });
   } catch (err) {
     document.getElementById('planTs').textContent = "Planner fout";
   }
