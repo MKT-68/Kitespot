@@ -530,34 +530,35 @@ function goTab(name) {
 
 // ── RANKING ──────────────────────────────────────────────────
 async function loadRanking() {
-  const r = await fetch("/api/analyse?type=weather", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    lat: spot.lat,
-    lon: spot.lon,
-    days: 1
-  })
-});
+  const rows = await Promise.all(SPOTS.map(async spot => {
+    try {
+      const r = await fetch("/api/analyse?type=weather", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat: spot.lat,
+          lon: spot.lon,
+          days: 1
+        })
+      });
 
-const data = await r.json();
+      const data = await r.json();
+      if (!r.ok || data.error) return null;
 
-if (!r.ok || data.error) {
-  console.error("Weather error:", data);
-  return null;
-}
+      const c = data.current;
 
-const c = data.current;
+      const w = {
+        kn: kn(c.wind_kph),
+        gust: kn(c.gust_kph),
+        dir: c.wind_degree,
+        rain: c.precip_mm
+      };
 
-const w = {
-  kn: kn(c.wind_kph),
-  gust: kn(c.gust_kph),
-  dir: c.wind_degree,
-  rain: c.precip_mm
-};
+      return { spot, w, ...score(w, spot) };
 
-return { spot, w, ...score(w, spot) };
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }));
 
   const top3 = rows.filter(Boolean).sort((a,b) => b.s - a.s).slice(0, 3);
@@ -604,41 +605,48 @@ return { spot, w, ...score(w, spot) };
 }
 
 // ── PLANNER ──────────────────────────────────────────────────
-async function loadPlanning() {
-  const r = await fetch("/api/analyse?type=weather", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    lat: spot.lat,
-    lon: spot.lon,
-    days: 7
-  })
-});
+const results = await Promise.all(SPOTS.map(async spot => {
+  try {
+    const r = await fetch("/api/analyse?type=weather", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lat: spot.lat,
+        lon: spot.lon,
+        days: 7
+      })
+    });
 
-const data = await r.json();
+    const data = await r.json();
+    if (!r.ok || data.error) return { spot, moments: [] };
 
-if (!r.ok || data.error) {
-  console.error("Weather error:", data);
-  return { spot, moments: [] };
-}
+    const now = new Date(), moments = [];
 
-const now = new Date(), moments = [];
+    data.forecast.forecastday.forEach(fd => {
+      fd.hour.forEach(h => {
+        const dt = new Date(h.time);
+        if (dt <= now) return;
 
-data.forecast.forecastday.forEach(fd => {
-        fd.hour.forEach(h => {
-          const [dp,tp] = h.time.split(' ');
-          const [yr,mo,dy] = dp.split('-').map(Number);
-          const [hr] = tp.split(':').map(Number);
-          const dt = new Date(yr,mo-1,dy,hr);
-          if (dt <= now) return;
-          const wkn = kn(h.wind_kph), deg = h.wind_degree;
-          if (wkn < 12 || dscore(deg, spot) <= 0) return;
-          moments.push({ dt, dp, kn:Math.round(wkn), deg });
+        const wkn = kn(h.wind_kph);
+        const deg = h.wind_degree;
+
+        if (wkn < 12 || dscore(deg, spot) <= 0) return;
+
+        moments.push({
+          dt,
+          dp: h.time.split(' ')[0],
+          kn: Math.round(wkn),
+          deg
         });
       });
-      return { spot, moments };
-    } catch { return { spot, moments:[] }; }
-  }));
+    });
+
+    return { spot, moments };
+
+  } catch {
+    return { spot, moments: [] };
+  }
+}));
 
   const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
   document.getElementById('planTs').textContent = `${now} · WeatherAPI · ≥12 kn + ideale richting`;
