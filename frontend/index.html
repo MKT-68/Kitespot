@@ -774,11 +774,33 @@ function lg(type, msg) {
 async function runAgent() {
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
+  document.getElementById('errorMsg').classList.remove('show');
+  document.getElementById('resultPanel').classList.remove('show');
+  document.getElementById('logBody').innerHTML = '';
+  document.getElementById('agentLog').classList.add('show');
+
+  lg('think', `Agent gestart voor ${sel.name}`);
 
   try {
-    lg('think', `Agent gestart voor ${sel.name}`); // ✅ FIXED
+    // Stap 1: Weerdata
+    lg('tool', `WeatherAPI → ${sel.lat},${sel.lon}`);
+    const wr = await fetch(`${WAPI}/forecast.json?key=${WKEY}&q=${sel.lat},${sel.lon}&days=1&aqi=no`);
+    if (!wr.ok) throw new Error(`WeatherAPI fout ${wr.status}`);
+    const c = (await wr.json()).current;
+    const w = { kn:kn(c.wind_kph), gust:kn(c.gust_kph), dir:c.wind_degree, rain:c.precip_mm, temp:c.temp_c };
+    lg('ok', `Wind: ${w.kn} kn · ${compass(w.dir)} · gusts: ${w.gust} kn`);
 
-    const wr = await fetch("/api/analyse?type=weather", {
+    // Stap 2: Score
+    const ev = score(w, sel);
+    lg('ok', `Score: ${ev.s}/10 → ${ev.v.toUpperCase()} · Richting: ${ev.dirLabel}`);
+
+    // Stap 3: Claude
+    const prompt = `Je bent een expert kitesurf-coach. Analyseer kort de condities voor ${sel.name} (${sel.type}).
+Wind: ${w.kn} kn | Stoten: ${w.gust} kn | Richting: ${w.dir}° (${compass(w.dir)}) | Ideaal: ${sel.ideal} | Temp: ${w.temp}°C | Score: ${ev.s}/10 (${ev.v})
+Geef een bondige analyse in het Nederlands van max 120 woorden: samenvatting, windanalyse, timing, 1 aandachtspunt. Geen headers.`;
+
+    lg('think', 'Claude vraag sturen...');
+    const ar = await fetch('https://api.anthropic.com/v1/messages', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
