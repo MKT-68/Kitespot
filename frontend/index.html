@@ -774,19 +774,13 @@ function lg(type, msg) {
 async function runAgent() {
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
-  document.getElementById('errorMsg').classList.remove('show');
-  document.getElementById('resultPanel').classList.remove('show');
-  document.getElementById('logBody').innerHTML = '';
-  document.getElementById('agentLog').classList.add('show');
+  
+   lg('think', `Agent gestart voor ${sel.name}`); // ✅ FIXED
 
-  lg('think', `Agent gestart voor ${sel.name}`);
 
   try {
     // Stap 1: Weerdata
     lg('tool', `WeatherAPI → ${sel.lat},${sel.lon}`);
-    const wr = await fetch(`${WAPI}/forecast.json?key=${WKEY}&q=${sel.lat},${sel.lon}&days=1&aqi=no`);
-    if (!wr.ok) throw new Error(`WeatherAPI fout ${wr.status}`);
-    const c = (await wr.json()).current;
     const w = { kn:kn(c.wind_kph), gust:kn(c.gust_kph), dir:c.wind_degree, rain:c.precip_mm, temp:c.temp_c };
     lg('ok', `Wind: ${w.kn} kn · ${compass(w.dir)} · gusts: ${w.gust} kn`);
 
