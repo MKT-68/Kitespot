@@ -1,21 +1,594 @@
-<!-- ONLY the JavaScript section is shown below.
-Replace your existing <script>...</script> with this -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KiteSpot">
+<meta name="theme-color" content="#03080f">
+<title>KiteSpot</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --void:#03080f; --base:#060e18; --panel:#0a1422; --panel2:#0e1c2e;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --green:#00ff88; --green-pale:rgba(0,255,136,0.1);
+  --amber:#ffcc00; --amber-pale:rgba(255,204,0,0.1);
+  --red:#ff4444; --red-pale:rgba(255,68,68,0.1);
+  --blue:#4da6ff; --foam:#ddeeff;
+  --muted:rgba(221,238,255,0.4); --muted2:rgba(221,238,255,0.18);
+  --cond:'Barlow Condensed',sans-serif; --sans:'Barlow',sans-serif;
+  --tab-h:72px;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; background:var(--void); color:var(--foam); font-family:var(--sans); }
+
+/* ── SHELL: statusbalk + topbar + content + tabs ── */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  height: 100vh; /* fallback */
+}
+
+.statusbar {
+  background: var(--base);
+  height: env(safe-area-inset-top, 44px);
+  flex-shrink: 0;
+}
+
+.topbar {
+  background: var(--base);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--cond);
+  font-size: 1.4rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--foam);
+  letter-spacing: .02em;
+}
+
+.brand span { color: var(--green); }
+
+.topbar-right {
+  font-family: var(--cond);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  background: var(--base);
+  border-top: 1px solid var(--border);
+  height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  flex-shrink: 0;
+  order: 3;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.tab-icon { font-size: 1.3rem; }
+.tab-label { font-family:var(--cond); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.tab.active .tab-label { color:var(--green); }
+.tab.active .tab-icon { filter: drop-shadow(0 0 4px var(--green)); }
+
+/* ── PAGES ── */
+.content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  order: 2;
+}
+
+.page {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  padding-bottom: 24px;
+}
+
+.page.active { display: block; }
+
+/* ── SHARED ── */
+.section-title {
+  font-family: var(--cond);
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.skel {
+  background: linear-gradient(90deg, var(--panel) 25%, var(--panel2) 50%, var(--panel) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+.error-msg {
+  background: var(--red-pale);
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: var(--cond);
+  font-size: 12px;
+  color: var(--red);
+  margin-bottom: 12px;
+  display: none;
+}
+.error-msg.show { display: block; }
+
+/* ── RANKING ── */
+.rank-ts { font-family:var(--cond); font-size:10px; color:var(--muted); margin-bottom:12px; }
+
+.rank-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.rank-card:active { opacity: .85; }
+.rank-card::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; border-radius:10px 0 0 10px; }
+.rank-card.goed::before  { background:var(--green); }
+.rank-card.matig::before { background:var(--amber); }
+.rank-card.slecht::before{ background:var(--red); }
+
+.rc-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.rc-name { font-family:var(--cond); font-size:1.3rem; font-weight:800; text-transform:uppercase; color:var(--foam); }
+.rc-type { font-family:var(--cond); font-size:11px; color:var(--muted); }
+.rc-score { font-family:var(--cond); font-size:2rem; font-weight:800; line-height:1; text-align:right; }
+.rank-card.goed  .rc-score { color:var(--green); }
+.rank-card.matig .rc-score { color:var(--amber); }
+.rank-card.slecht .rc-score{ color:var(--red); }
+.rc-score-sub { font-family:var(--cond); font-size:9px; color:var(--muted); }
+
+.rc-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.rc-cell { background:var(--panel2); border-radius:6px; padding:8px 10px; }
+.rc-cell-label { font-family:var(--cond); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+.rc-cell-val { font-family:var(--cond); font-size:1rem; font-weight:700; color:var(--foam); }
+
+.dir-badge { display:inline-block; font-family:var(--cond); font-size:10px; padding:2px 8px; border-radius:10px; margin-top:3px; }
+.dir-badge.ideal  { background:var(--green-pale); color:var(--green); }
+.dir-badge.ok     { background:var(--amber-pale); color:var(--amber); }
+.dir-badge.bad    { background:var(--red-pale);   color:var(--red); }
+
+.rc-cta { margin-top:8px; font-family:var(--cond); font-size:10px; color:var(--green); text-align:right; letter-spacing:.05em; }
+
+/* ── PLANNER ── */
+.plan-ts { font-family:var(--cond); font-size:10px; color:var(--muted); margin-bottom:12px; }
+
+.spot-block { margin-bottom:18px; }
+.spot-block-hdr {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px;
+  padding:8px 12px;
+  background:var(--panel2); border:1px solid var(--border2);
+  border-bottom:none; border-radius:8px 8px 0 0;
+}
+.sbh-name  { font-family:var(--cond); font-size:1rem; font-weight:800; text-transform:uppercase; color:var(--foam); }
+.sbh-ideal { font-family:var(--cond); font-size:10px; color:var(--green); }
+.sbh-count { font-family:var(--cond); font-size:10px; color:var(--muted); }
+
+.no-moments {
+  padding:10px 12px; background:var(--panel); border:1px solid var(--border);
+  border-radius:0 0 8px 8px; font-family:var(--cond); font-size:11px; color:var(--muted); font-style:italic;
+}
+
+.plan-tbl-wrap { background:var(--panel); border:1px solid var(--border); border-radius:0 0 8px 8px; overflow:hidden; }
+.plan-tbl { width:100%; border-collapse:collapse; }
+.plan-tbl thead th { padding:6px 10px; text-align:left; background:var(--panel); border-bottom:1px solid var(--border2); font-family:var(--cond); font-size:9px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); }
+.plan-tbl tbody tr { border-bottom:1px solid var(--border); }
+.plan-tbl tbody tr:last-child { border-bottom:none; }
+.plan-tbl tbody tr.day-sep td { padding-top:10px; border-top:1px solid var(--border2); }
+.plan-tbl td { padding:6px 10px; font-family:var(--cond); font-size:12px; }
+.td-date { color:var(--muted); font-size:10px; }
+.td-time { color:var(--amber); font-weight:700; }
+.td-wind { color:var(--green); font-weight:700; }
+.td-dir  { color:var(--blue); }
+
+/* ── ANALYSE ── */
+.spot-scroll {
+  display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  padding-bottom:4px; margin-bottom:14px; scrollbar-width:none;
+}
+.spot-scroll::-webkit-scrollbar { display:none; }
+
+.spot-chip {
+  flex-shrink:0; padding:8px 14px;
+  background:var(--panel); border:1.5px solid var(--border); border-radius:20px;
+  cursor:pointer;
+}
+.spot-chip.sel { border-color:var(--green); background:var(--green-pale); }
+.chip-name  { display:block; font-family:var(--cond); font-size:13px; font-weight:700; text-transform:uppercase; color:var(--foam); }
+.chip-ideal { font-family:var(--cond); font-size:10px; color:var(--muted); }
+.spot-chip.sel .chip-ideal { color:var(--green); }
+
+.map-box { border:1px solid var(--border2); border-radius:10px; overflow:hidden; margin-bottom:14px; position:relative; }
+#spotMap  { width:100%; height:220px; }
+
+.wind-badge {
+  position:absolute; top:10px; right:10px; z-index:1000;
+  background:rgba(6,14,24,0.92); border:1px solid var(--border2); border-radius:8px;
+  padding:8px 12px; display:none; align-items:center; gap:8px; pointer-events:none;
+}
+.wind-badge.show { display:flex; }
+.wb-kn    { font-family:var(--cond); font-size:1.2rem; font-weight:800; color:var(--foam); line-height:1; }
+.wb-dir   { font-family:var(--cond); font-size:10px; color:var(--muted); }
+.wb-label { font-family:var(--cond); font-size:9px; color:var(--green); text-transform:uppercase; letter-spacing:.1em; }
+
+.analyse-btn {
+  width:100%; padding:16px;
+  background:var(--green); color:var(--void);
+  border:none; border-radius:12px;
+  font-family:var(--cond); font-size:1.15rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em;
+  cursor:pointer; margin-bottom:16px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.analyse-btn:active { opacity:.85; }
+.analyse-btn:disabled { background:var(--panel2); color:var(--muted); }
+
+.agent-log { background:var(--base); border:1px solid var(--border2); border-radius:10px; overflow:hidden; margin-bottom:14px; display:none; }
+.agent-log.show { display:block; }
+.log-hdr { padding:8px 12px; background:var(--panel2); display:flex; align-items:center; gap:8px; font-family:var(--cond); font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+.log-spin { width:8px; height:8px; border:1.5px solid var(--green); border-top-color:transparent; border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.log-body { padding:10px 12px; display:flex; flex-direction:column; gap:3px; max-height:140px; overflow-y:auto; }
+.log-line { font-family:var(--cond); font-size:11px; color:var(--muted2); line-height:1.5; }
+.l-ok    { color:var(--green); }
+.l-think { color:var(--amber); font-style:italic; }
+.l-err   { color:var(--red); }
+.l-tool  { color:var(--blue); }
+
+.result { display:none; }
+.result.show { display:block; }
+
+.verdict {
+  border-radius:12px; padding:16px; border:1px solid;
+  margin-bottom:14px; display:flex; align-items:center; gap:14px;
+}
+.verdict.goed  { border-color:rgba(0,255,136,.3); background:var(--green-pale); }
+.verdict.matig { border-color:rgba(255,204,0,.3);  background:var(--amber-pale); }
+.verdict.slecht{ border-color:rgba(255,68,68,.3);  background:var(--red-pale); }
+.v-emoji { font-size:2rem; }
+.v-body  { flex:1; }
+.v-label { font-family:var(--cond); font-size:1.5rem; font-weight:800; text-transform:uppercase; line-height:1; margin-bottom:2px; }
+.verdict.goed  .v-label { color:var(--green); }
+.verdict.matig .v-label { color:var(--amber); }
+.verdict.slecht .v-label{ color:var(--red); }
+.v-spot  { font-family:var(--cond); font-size:11px; color:var(--muted); }
+.v-score { font-family:var(--cond); font-size:2.5rem; font-weight:800; line-height:1; text-align:right; }
+.verdict.goed  .v-score { color:var(--green); }
+.verdict.matig .v-score { color:var(--amber); }
+.verdict.slecht .v-score{ color:var(--red); }
+.v-score-lbl { font-family:var(--cond); font-size:9px; color:var(--muted); text-transform:uppercase; }
+
+.data-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.data-tile { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.dt-src   { font-family:var(--cond); font-size:8px; letter-spacing:.15em; text-transform:uppercase; color:var(--green); margin-bottom:2px; }
+.dt-label { font-family:var(--cond); font-size:10px; color:var(--muted); margin-bottom:2px; }
+.dt-val   { font-family:var(--cond); font-size:1.3rem; font-weight:700; color:var(--foam); line-height:1; }
+.dt-unit  { font-family:var(--cond); font-size:10px; color:var(--muted); }
+.dt-sub   { font-family:var(--cond); font-size:10px; color:var(--muted); margin-top:2px; }
+
+.gear-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.gear-chip { padding:6px 12px; border:1px solid rgba(0,255,136,.3); background:var(--green-pale); border-radius:20px; font-family:var(--cond); font-size:11px; color:var(--green); }
+
+.ai-block { background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:14px; }
+.ai-hdr   { padding:8px 12px; background:var(--panel2); border-bottom:1px solid var(--border); font-family:var(--cond); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.ai-body  { padding:12px; font-size:13px; line-height:1.7; color:var(--foam); white-space:pre-wrap; }
+
+/* ── INFO ── */
+.info-card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:12px; }
+.info-card h3 { font-family:var(--cond); font-size:1rem; font-weight:700; text-transform:uppercase; color:var(--green); margin-bottom:8px; }
+.info-card p  { font-family:var(--cond); font-size:12px; color:var(--muted); line-height:1.6; }
+.spot-row { display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); }
+.spot-row:last-child { border-bottom:none; }
+.sr-name  { font-family:var(--cond); font-size:13px; font-weight:700; text-transform:uppercase; color:var(--foam); }
+.sr-ideal { font-family:var(--cond); font-size:10px; color:var(--green); }
+.sr-type  { font-family:var(--cond); font-size:10px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Ruimte voor iPhone statusbalk (klok/wifi/batterij) -->
+  <div class="statusbar"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand">🪁 Kite<span>Spot</span></div>
+    <div class="topbar-right">Noord-Holland</div>
+  </div>
+
+  <!-- Pagina inhoud -->
+  <div class="content">
+
+    <!-- RANKING -->
+    <div class="page active" id="page-ranking">
+      <div class="section-title"><span>🏆 Top 3 beste spots nu</span></div>
+      <div class="rank-ts" id="rankTs">Weerdata ophalen...</div>
+      <div id="rankBody">
+        <div class="skel" style="height:140px;margin-bottom:10px"></div>
+        <div class="skel" style="height:140px;margin-bottom:10px"></div>
+        <div class="skel" style="height:140px"></div>
+      </div>
+    </div>
+
+    <!-- PLANNER -->
+    <div class="page" id="page-plan">
+      <div class="section-title"><span>📅 Kitebare momenten — 7 dagen</span></div>
+      <div class="plan-ts" id="planTs">Voorspelling ophalen...</div>
+      <div id="planBody">
+        <div class="skel" style="height:44px;margin-bottom:4px;border-radius:8px 8px 0 0"></div>
+        <div class="skel" style="height:70px;margin-bottom:14px;border-radius:0 0 8px 8px"></div>
+        <div class="skel" style="height:44px;margin-bottom:4px;border-radius:8px 8px 0 0"></div>
+        <div class="skel" style="height:70px;border-radius:0 0 8px 8px"></div>
+      </div>
+    </div>
+
+    <!-- ANALYSE -->
+    <div class="page" id="page-agent">
+      <div class="section-title"><span>📍 Spot kiezen</span></div>
+      <div class="spot-scroll" id="spotScroll"></div>
+
+      <div class="map-box">
+        <div id="spotMap"></div>
+        <div class="wind-badge" id="windBadge">
+          <canvas id="windCanvas" width="44" height="44"></canvas>
+          <div>
+            <div class="wb-kn" id="wbKn">—</div>
+            <div class="wb-dir" id="wbDir">—</div>
+            <div class="wb-label">Wind</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="analyse-btn" id="analyseBtn" onclick="runAgent()">⚡ Analyseer deze spot</button>
+      <div class="error-msg" id="errorMsg"></div>
+
+      <div class="agent-log" id="agentLog">
+        <div class="log-hdr"><div class="log-spin"></div><span>Agent aan het werk...</span></div>
+        <div class="log-body" id="logBody"></div>
+      </div>
+
+      <div class="result" id="resultPanel">
+        <div class="verdict goed" id="verdictEl">
+          <div class="v-emoji" id="vEmoji">🤙</div>
+          <div class="v-body">
+            <div class="v-label" id="vLabel">Go!</div>
+            <div class="v-spot"  id="vSpot">—</div>
+          </div>
+          <div>
+            <div class="v-score" id="vScore">—</div>
+            <div class="v-score-lbl">/10</div>
+          </div>
+        </div>
+
+        <div class="section-title"><span>Live data</span></div>
+        <div class="data-grid" id="dataGrid"></div>
+
+        <div class="section-title"><span>Materiaal</span></div>
+        <div class="gear-row" id="gearRow"></div>
+
+        <div class="section-title"><span>AI Analyse</span></div>
+        <div class="ai-block">
+          <div class="ai-hdr">🤖 Claude</div>
+          <div class="ai-body" id="aiBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="page" id="page-info">
+      <div class="section-title"><span>📍 Spots</span></div>
+      <div class="info-card" id="infoSpots"></div>
+      <div class="section-title"><span>ℹ️ Over</span></div>
+      <div class="info-card">
+        <h3>KiteSpot Checker</h3>
+        <p>Weerdata: WeatherAPI.com<br>AI analyse: Claude (Anthropic)<br>Kaart: OpenStreetMap</p>
+      </div>
+      <div class="info-card">
+        <h3>Score</h3>
+        <p>Windrichting: max 5 pt<br>Windsterkte 12–25 kn: max 3 pt<br>Gusty/neerslag: max -2 pt</p>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" id="tab-ranking" onclick="goTab('ranking')">
+      <div class="tab-icon">🏆</div><div class="tab-label">Ranking</div>
+    </div>
+    <div class="tab" id="tab-plan" onclick="goTab('plan')">
+      <div class="tab-icon">📅</div><div class="tab-label">Planner</div>
+    </div>
+    <div class="tab" id="tab-agent" onclick="goTab('agent')">
+      <div class="tab-icon">⚡</div><div class="tab-label">Analyse</div>
+    </div>
+    <div class="tab" id="tab-info" onclick="goTab('info')">
+      <div class="tab-icon">⚙️</div><div class="tab-label">Info</div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
-const API_URL = "/api/analyse"; // ✅ FIXED
+const API_URL = "/api/analyse"; // ✅ FIXED (was hardcoded Vercel preview URL)
 
-// ── START ────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  renderChips();
-  renderInfoSpots();
-  setTimeout(() => initMap(), 200);
-  loadRanking();
-  loadPlanning(); // ✅ now valid
-});
+
+// ✅ NEW: backend instead of Anthropic
+//const API_URL = "https://kitespot-git-main-mkt-68s-projects.vercel.app/api/analyse";
+
+// ── SPOTS ───────────────────────────────────────────────────
+const SPOTS = [
+  {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
+  {id:'andijk',       name:'Andijk',       lat:52.7393,lon:5.175, type:'IJsselmeer · Vlak', ideal:'NO–NW wind', iF:45, iT:315,iM:0  },
+  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
+  {id:'medemblik',    name:'Medemblik',    lat:52.755, lon:5.124, type:'IJsselmeer · Vlak', ideal:'N–O wind',   iF:0,  iT:90, iM:45 },
+  {id:'warden',       name:'Warder',       lat:52.533, lon:5.060, type:'Markermeer · Vlak', ideal:'NO–ZO wind', iF:45, iT:135,iM:90 },
+  {id:'edam',         name:'Edam',         lat:52.515, lon:5.075, type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  iF:0,  iT:135,iM:68 },
+  {id:'camperduin',   name:'Camperduin',   lat:52.725, lon:4.637, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
+  {id:'ijmuiden',     name:'IJmuiden',     lat:52.455, lon:4.558, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
+];
+
+const DAYS   = ['zo','ma','di','wo','do','vr','za'];
+const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
+let sel = SPOTS[0];
+let leafMap = null, leafMarker = null, animFrame = null;
+
+// ── HELPERS ─────────────────────────────────────────────────
+function kn(kph) { return +(kph * 0.539957).toFixed(1); }
+
+function compass(d) {
+  return ['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
+}
+
+function dscore(deg, spot) {
+  const arc = (spot.iT - spot.iF + 360) % 360;
+  const half = (arc <= 180 ? arc : 360 - arc) / 2;
+  let d = Math.abs(deg - spot.iM); if (d > 180) d = 360 - d;
+  return Math.max(0, 1 - Math.max(0, d - half) / 60);
+}
+
+function score(w, spot) {
+  const ds = dscore(w.dir, spot), dp = Math.round(ds * 5);
+  const wp = w.kn>=16&&w.kn<=25?3 : w.kn>=12&&w.kn<=30?2 : w.kn>=10?1 : 0;
+  let c = 0;
+  if (w.gust/Math.max(w.kn,1) > 1.5) c -= 2;
+  else if (w.gust/Math.max(w.kn,1) > 1.3) c -= 1;
+  if (w.rain > 2) c -= 1;
+  const s = Math.max(1, Math.min(10, dp + wp + c));
+  return { s, v: s>=7?'goed':s>=4?'matig':'slecht', ds, dp, dirLabel: ds>=0.85?'✓ Ideaal':ds>=0.5?'~ Acceptabel':'✗ Ongunstig' };
+}
+
+function gear(kn) {
+  if (kn < 12) return ['17–19m kite','Board 145cm+'];
+  if (kn < 16) return ['14–16m kite','Board 138–142cm'];
+  if (kn < 22) return ['12–14m kite','Board 136–140cm'];
+  if (kn < 28) return ['10–12m kite','Board 132–137cm'];
+  return ['7–9m kite','Board 128–134cm','⚠️ Sterk wind'];
+}
+
+function dayLbl(str) {
+  const [y,m,d] = str.split('-').map(Number);
+  const dt = new Date(y,m-1,d), now = new Date(); now.setHours(0,0,0,0);
+  const diff = Math.round((dt-now)/86400000);
+  if (diff===0) return `vandaag · ${d} ${MONTHS[m-1]}`;
+  if (diff===1) return `morgen · ${d} ${MONTHS[m-1]}`;
+  return `${DAYS[dt.getDay()]} · ${d} ${MONTHS[m-1]}`;
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function goTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'agent') setTimeout(() => leafMap && leafMap.invalidateSize(), 300);
+}
+
+// ── RANKING ──────────────────────────────────────────────────
+async function loadRanking() {
+  try {
+    const rows = await Promise.all(SPOTS.map(async spot => {
+      try {
+        const r = await fetch("/api/analyse?type=weather", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lat: spot.lat,
+            lon: spot.lon,
+            days: 1
+          })
+        });
+
+        const data = await r.json();
+        if (!r.ok || data.error) return null;
+
+        const c = data.current;
+
+        const w = {
+          kn: kn(c.wind_kph),
+          gust: kn(c.gust_kph),
+          dir: c.wind_degree,
+          rain: c.precip_mm
+        };
+
+        return { spot, w, ...score(w, spot) };
+
+      } catch {
+        return null;
+      }
+    }));
+
+    const top3 = rows.filter(Boolean).sort((a,b) => b.s - a.s).slice(0, 3);
+
+    const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('rankTs').textContent = `${now} · WeatherAPI`;
+
+    const body = document.getElementById('rankBody');
+    body.innerHTML = '';
+
+    if (!top3.length) {
+      body.innerHTML = `<div class="error-msg show">Geen data beschikbaar</div>`;
+      return;
+    }
+
+    top3.forEach((r) => {
+      const card = document.createElement('div');
+      card.className = `rank-card ${r.v}`;
+      card.innerHTML = `<div class="rc-name">${r.spot.name}</div>`;
+      body.appendChild(card);
+    });
+
+  } catch (err) {
+    document.getElementById('rankTs').textContent = "Fout bij ophalen data";
+  }
+}
 
 // ── PLANNER ──────────────────────────────────────────────────
-async function loadPlanning() {
+async function loadPlanning() {  // ✅ FIX: wrapped in function
   try {
     const results = await Promise.all(SPOTS.map(async spot => {
       try {
@@ -55,66 +628,102 @@ async function loadPlanning() {
 
         return { spot, moments };
 
-      } catch (e) {
-        console.error("Planner fetch failed", e);
+      } catch {
         return { spot, moments: [] };
       }
     }));
 
-    const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
-    document.getElementById('planTs').textContent = `${now} · WeatherAPI · ≥12 kn + ideale richting`;
+    document.getElementById('planTs').textContent =
+      new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
 
     const body = document.getElementById('planBody');
     body.innerHTML = '';
 
     results.forEach(({ spot, moments }) => {
       const block = document.createElement('div');
-      block.className = 'spot-block';
-
-      const cnt = moments.length > 0
-        ? `${moments.length} moment${moments.length!==1?'en':''}`
-        : 'geen';
-
-      block.innerHTML =
-        `<div class="spot-block-hdr">
-          <span class="sbh-name">${spot.name}</span>
-          <span class="sbh-ideal">${spot.ideal}</span>
-          <span class="sbh-count">${cnt}</span>
-        </div>`;
-
-      if (!moments.length) {
-        block.innerHTML += `<div class="no-moments">Geen kitebare momenten.</div>`;
-      } else {
-        const byDay = {};
-        moments.forEach(m => {
-          if (!byDay[m.dp]) byDay[m.dp]=[];
-          byDay[m.dp].push(m);
-        });
-
-        let t = `<div class="plan-tbl-wrap"><table class="plan-tbl"><tbody>`;
-
-        Object.entries(byDay).forEach(([day, ms]) => {
-          ms.forEach(m => {
-            const time = `${String(m.dt.getHours()).padStart(2,'0')}:00`;
-            t += `<tr>
-              <td>${day}</td>
-              <td>${time}</td>
-              <td>${m.kn}</td>
-              <td>${compass(m.deg)}</td>
-            </tr>`;
-          });
-        });
-
-        t += `</tbody></table></div>`;
-        block.innerHTML += t;
-      }
-
+      block.innerHTML = `<div>${spot.name} (${moments.length})</div>`;
       body.appendChild(block);
     });
 
   } catch (err) {
-    console.error("Planner crash", err);
+    document.getElementById('planTs').textContent = "Planner fout";
   }
+}
+
+// ── MAP ──────────────────────────────────────────────────────
+function initMap() {
+  leafMap = L.map('spotMap', { center:[sel.lat, sel.lon], zoom:12, zoomControl:false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OSM', maxZoom:18 }).addTo(leafMap);
+  const ico = L.divIcon({ className:'', html:`<div style="width:12px;height:12px;background:#00ff88;border:2px solid rgba(3,8,15,.8);border-radius:50%;box-shadow:0 0 8px #00ff88"></div>`, iconSize:[12,12], iconAnchor:[6,6] });
+  leafMarker = L.marker([sel.lat, sel.lon], { icon:ico }).addTo(leafMap).bindTooltip(`<b>${sel.name}</b>`, { direction:'top', offset:[0,-8] });
+}
+
+function updateMap(spot) {
+  if (!leafMap) return;
+  leafMap.flyTo([spot.lat, spot.lon], 12, { duration:.8 });
+  leafMarker.setLatLng([spot.lat, spot.lon]);
+  leafMarker.setTooltipContent(`<b>${spot.name}</b>`);
+  document.getElementById('windBadge').classList.remove('show');
+}
+
+function drawArrow(deg, wkn) {
+  const cv = document.getElementById('windCanvas'); if (!cv) return;
+  const ctx = cv.getContext('2d'), cx=22, cy=22, r=19;
+  ctx.clearRect(0,0,44,44);
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,2*Math.PI); ctx.fillStyle='rgba(0,255,136,0.08)'; ctx.fill(); ctx.strokeStyle='#00ff88'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='rgba(221,238,255,0.25)'; ctx.font='6px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('N',cx,cy-r+6); ctx.fillText('Z',cx,cy+r-6); ctx.fillText('W',cx-r+6,cy); ctx.fillText('O',cx+r-6,cy);
+  const rad = ((deg+180)*Math.PI)/180;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rad);
+  ctx.beginPath(); ctx.moveTo(0,11); ctx.lineTo(0,-8); ctx.strokeStyle='#00ff88'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,-13); ctx.lineTo(-4,-6); ctx.lineTo(4,-6); ctx.closePath(); ctx.fillStyle='#00ff88'; ctx.fill();
+  ctx.restore();
+}
+
+function showWind(wkn, deg) {
+  document.getElementById('wbKn').textContent = wkn + ' kn';
+  document.getElementById('wbDir').textContent = compass(deg) + ' ' + deg + '°';
+  document.getElementById('windBadge').classList.add('show');
+  if (animFrame) cancelAnimationFrame(animFrame);
+  const amp = Math.min(8, wkn * 0.3); let t = 0;
+  function loop(ts) { t = ts * 0.0008; drawArrow(deg + Math.sin(t)*amp, wkn); animFrame = requestAnimationFrame(loop); }
+  animFrame = requestAnimationFrame(loop);
+}
+
+// ── SPOT CHIPS ────────────────────────────────────────────────
+function renderChips() {
+  const sc = document.getElementById('spotScroll'); sc.innerHTML = '';
+  SPOTS.forEach(spot => {
+    const c = document.createElement('div');
+    c.className = 'spot-chip' + (spot.id === sel.id ? ' sel' : '');
+    c.innerHTML = `<span class="chip-name">${spot.name}</span><span class="chip-ideal">${spot.ideal}</span>`;
+    c.onclick = () => {
+      sel = spot; renderChips(); updateMap(spot);
+      document.getElementById('resultPanel').classList.remove('show');
+      document.getElementById('agentLog').classList.remove('show');
+      document.getElementById('errorMsg').classList.remove('show');
+    };
+    sc.appendChild(c);
+  });
+  sc.querySelector('.sel')?.scrollIntoView({ inline:'center', behavior:'smooth' });
+}
+
+function renderInfoSpots() {
+  const c = document.getElementById('infoSpots');
+  c.innerHTML = '<h3>Kite Spots</h3>';
+  SPOTS.forEach(s => {
+    c.innerHTML += `<div class="spot-row"><span class="sr-name">${s.name}</span><div style="text-align:right"><div class="sr-ideal">${s.ideal}</div><div class="sr-type">${s.type}</div></div></div>`;
+  });
+}
+
+// ── AGENT LOG ────────────────────────────────────────────────
+function lg(type, msg) {
+  const b = document.getElementById('logBody');
+  const d = document.createElement('div'); d.className = 'log-line';
+  const t = new Date().toTimeString().slice(0,8);
+  const styles = { ok:`<span class="l-ok">✓</span> `, think:`<span class="l-think">⟳ </span>`, tool:`<span class="l-tool">[T] </span>`, err:`<span class="l-err">✗ </span>` };
+  d.innerHTML = `<span style="color:var(--muted2)">${t} </span>${styles[type]||''}${msg}`;
+  b.appendChild(d); b.scrollTop = b.scrollHeight;
 }
 
 // ── AGENT ────────────────────────────────────────────────────
@@ -122,12 +731,12 @@ async function runAgent() {
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
 
-  lg('think', `Agent gestart voor ${sel.name}`); // ✅ FIXED TEMPLATE STRING
-
   try {
+    lg('think', `Agent gestart voor ${sel.name}`); // ✅ FIXED
+
     const wr = await fetch("/api/analyse?type=weather", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         lat: sel.lat,
         lon: sel.lon,
@@ -136,19 +745,28 @@ async function runAgent() {
     });
 
     const data = await wr.json();
+
     if (!wr.ok || data.error) {
-      throw new Error(data.error?.message || "Weather fout");
+      throw new Error(data.error?.message || "Weather API fout");
     }
 
     const c = data.current;
 
-    const prompt = `Analyseer kitesurf condities voor ${sel.name}.
-Wind: ${c.wind_kph}
-Richting: ${c.wind_degree}`;
+    const w = {
+      kn: kn(c.wind_kph),
+      gust: kn(c.gust_kph),
+      dir: c.wind_degree,
+      rain: c.precip_mm,
+      temp: c.temp_c
+    };
+
+    lg('ok', `Wind ${w.kn} kn`); // ✅ FIXED
+
+    const prompt = `Analyseer kitesurf condities voor ${sel.name}`;
 
     const ar = await fetch(API_URL, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 300,
@@ -156,19 +774,30 @@ Richting: ${c.wind_degree}`;
       })
     });
 
+    if (!ar.ok) throw new Error(`AI fout ${ar.status}`);
+
     const result = await ar.json();
+    const analysis = result.content?.map(b => b.text).join('') || 'Geen antwoord';
 
-    document.getElementById('aiBody').textContent =
-      result.content?.map(b => b.text).join('') || 'Geen antwoord';
-
+    document.getElementById('aiBody').textContent = analysis;
     document.getElementById('resultPanel').classList.add('show');
 
   } catch (err) {
-    console.error(err);
-    document.getElementById('errorMsg').textContent = err.message;
-    document.getElementById('errorMsg').classList.add('show');
+    const em = document.getElementById('errorMsg');
+    em.textContent = 'Fout: ' + err.message;
+    em.classList.add('show');
   } finally {
     btn.disabled = false;
   }
 }
-</script>
+
+// ── START ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  renderChips();
+  renderInfoSpots();
+  setTimeout(() => initMap(), 200);
+
+  loadRanking();
+  loadPlanning(); // ✅ NOW WORKS
+});
+</script> 
