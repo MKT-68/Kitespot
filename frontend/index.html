@@ -804,16 +804,43 @@ async function runAgent() {
       temp: c.temp_c
     };
 
-    lg('ok', `Wind ${w.kn} kn`); // ✅ FIXED
+    lg('ok', `Wind ${w.kn} kn · ${compass(w.dir)} · gusts: ${w.gust} kn`);
 
-    const prompt = `Analyseer kitesurf condities voor ${sel.name}`;
+    // Score berekenen (zelfde logica als ranking)
+    const ev = score(w, sel);
+    lg('ok', `Score: ${ev.s}/10 → ${ev.v.toUpperCase()} · Richting: ${ev.dirLabel}`);
+
+    const prompt = `Je bent een expert kitesurf-coach. Analyseer de condities voor ${sel.name} (${sel.type}).
+
+LIVE DATA (WeatherAPI):
+- Wind: ${w.kn} knopen | Stoten: ${w.gust} knopen
+- Windrichting: ${w.dir}° (${compass(w.dir)}) | Ideale richting: ${sel.ideal}
+- Richtingsscore: ${ev.dirLabel} (${ev.dp}/5 punten)
+- Temperatuur: ${w.temp}°C | Neerslag: ${w.rain} mm/u
+- Totale score: ${ev.s}/10 (${ev.v.toUpperCase()})
+
+Geef je analyse in het Nederlands met de volgende onderdelen:
+
+SAMENVATTING
+Één zin: go of no-go, en waarom.
+
+WINDANALYSE
+Beoordeel de windrichting voor ${sel.name} (${sel.ideal} is ideaal), de stabiliteit en de kracht.
+
+TIMING ADVIES
+Is het nu het beste moment, of is er een beter tijdstip vandaag?
+
+AANDACHTSPUNT
+Maximaal 1 concreet veiligheids- of praktisch punt voor vandaag.
+
+Wees direct en praktisch. Gebruik kite-vakjargon waar passend.`;
 
     const ar = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
+        max_tokens: 600,
         messages: [{ role: 'user', content: prompt }]
       })
     });
