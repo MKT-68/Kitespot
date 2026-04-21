@@ -850,8 +850,42 @@ Wees direct en praktisch. Gebruik kite-vakjargon waar passend.`;
     const result = await ar.json();
     const analysis = result.content?.map(b => b.text).join('') || 'Geen antwoord';
 
+    // Resultaat tonen
+    document.getElementById('agentLog').classList.remove('show');
+
+    // 1) Tijdstip links in de resultatenbalk
+    const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
+    const emojis = {goed:'🤙', matig:'⚠️', slecht:'⛔'};
+    const labels  = {goed:'Go!', matig:'Twijfel', slecht:'Stay Home'};
+
+    const ve = document.getElementById('verdictEl');
+    ve.className = `verdict ${ev.v}`;
+    document.getElementById('vEmoji').textContent = emojis[ev.v];
+    document.getElementById('vLabel').textContent = labels[ev.v];
+    document.getElementById('vSpot').textContent  = `${sel.name} · ${now}`;  // tijdstip
+
+    // 2) Score rechts in de resultatenbalk
+    document.getElementById('vScore').textContent = ev.s;
+
+    // 3) Live data — 6 blokken
+    const grid = document.getElementById('dataGrid'); grid.innerHTML = '';
+    [
+      {s:'WeatherAPI', l:'Wind',     v:w.kn,           u:'kn', sub:''},
+      {s:'WeatherAPI', l:'Stoten',   v:w.gust,          u:'kn', sub:`${(w.gust/w.kn).toFixed(2)}x`},
+      {s:'WeatherAPI', l:'Richting', v:compass(w.dir),  u:'',   sub:`${w.dir}°`},
+      {s:'WeatherAPI', l:'Temp',     v:w.temp,          u:'°C', sub:''},
+      {s:'Score',      l:'Richting', v:`${ev.dp}/5`,    u:'',   sub:ev.dirLabel},
+      {s:'Score',      l:'Totaal',   v:ev.s,            u:'/10',sub:ev.v.toUpperCase()},
+    ].forEach(t => {
+      grid.innerHTML += `<div class="data-tile"><div class="dt-src">${t.s}</div><div class="dt-label">${t.l}</div><div class="dt-val">${t.v}<span class="dt-unit">${t.u}</span></div>${t.sub?`<div class="dt-sub">${t.sub}</div>`:''}</div>`;
+    });
+
+    // 4) Materiaal advies
+    document.getElementById('gearRow').innerHTML = gear(w.kn).map(g => `<div class="gear-chip">🪁 ${g}</div>`).join('');
+
     document.getElementById('aiBody').textContent = analysis;
     document.getElementById('resultPanel').classList.add('show');
+    document.getElementById('resultPanel').scrollIntoView({ behavior:'smooth', block:'start' });
 
   } catch (err) {
     const em = document.getElementById('errorMsg');
