@@ -242,15 +242,23 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
 .map-box { border:1px solid var(--border2); border-radius:10px; overflow:hidden; margin-bottom:14px; position:relative; }
 #spotMap  { width:100%; height:220px; }
 
-.wind-badge {
-  position:absolute; top:10px; right:10px; z-index:1000;
-  background:rgba(6,14,24,0.92); border:1px solid var(--border2); border-radius:8px;
-  padding:8px 12px; display:none; align-items:center; gap:8px; pointer-events:none;
+/* Windpijl als Leaflet Custom Control — werkt correct bovenop de kaart */
+.wind-control {
+  background: rgba(6,14,24,0.95) !important;
+  border: 1px solid var(--border2) !important;
+  padding: 10px 14px !important;
+  border-radius: 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.6) !important;
+  min-width: 120px;
 }
-.wind-badge.show { display:flex; }
-.wb-kn    { font-family:var(--cond); font-size:1.2rem; font-weight:800; color:var(--foam); line-height:1; }
-.wb-dir   { font-family:var(--cond); font-size:10px; color:var(--muted); }
-.wb-label { font-family:var(--cond); font-size:9px; color:var(--green); text-transform:uppercase; letter-spacing:.1em; }
+.wind-control canvas { display:block; flex-shrink:0; }
+.wind-control-info { display:flex; flex-direction:column; gap:2px; }
+.wind-control-kn  { font-family:var(--cond); font-size:1.3rem; font-weight:800; line-height:1; color:var(--foam); }
+.wind-control-dir { font-family:var(--cond); font-size:10px; color:var(--muted); }
+.wind-control-label { font-family:var(--cond); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--green); }
 
 .analyse-btn {
   width:100%; padding:16px;
@@ -371,14 +379,6 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
 
       <div class="map-box">
         <div id="spotMap"></div>
-        <div class="wind-badge" id="windBadge">
-          <canvas id="windCanvas" width="44" height="44"></canvas>
-          <div>
-            <div class="wb-kn" id="wbKn">—</div>
-            <div class="wb-dir" id="wbDir">—</div>
-            <div class="wb-label">Wind</div>
-          </div>
-        </div>
       </div>
 
       <button class="analyse-btn" id="analyseBtn" onclick="runAgent()">⚡ Analyseer deze spot</button>
@@ -695,11 +695,46 @@ async function loadPlanning() {  // ✅ FIX: wrapped in function
 }
 
 // ── MAP ──────────────────────────────────────────────────────
+let windControl = null;
+let windAnimFrame = null;
+
+// Leaflet Custom Control voor windpijl — werkt correct bovenop de kaart
+function createWindControl() {
+  const WindControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function() {
+      const div = L.DomUtil.create('div', 'wind-control');
+      div.id = 'windControlDiv';
+      div.style.display = 'none';
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 52; canvas.height = 52; canvas.id = 'windCanvas';
+
+      const info = document.createElement('div');
+      info.className = 'wind-control-info';
+      info.innerHTML = `
+        <span class="wind-control-kn" id="wcKn">— kn</span>
+        <span class="wind-control-dir" id="wcDir">—</span>
+        <span class="wind-control-label">↑ windrichting</span>`;
+
+      div.appendChild(canvas);
+      div.appendChild(info);
+      L.DomEvent.disableClickPropagation(div);
+      return div;
+    }
+  });
+  return new WindControl();
+}
+
 function initMap() {
   leafMap = L.map('spotMap', { center:[sel.lat, sel.lon], zoom:12, zoomControl:false });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OSM', maxZoom:18 }).addTo(leafMap);
   const ico = L.divIcon({ className:'', html:`<div style="width:12px;height:12px;background:#00ff88;border:2px solid rgba(3,8,15,.8);border-radius:50%;box-shadow:0 0 8px #00ff88"></div>`, iconSize:[12,12], iconAnchor:[6,6] });
   leafMarker = L.marker([sel.lat, sel.lon], { icon:ico }).addTo(leafMap).bindTooltip(`<b>${sel.name}</b>`, { direction:'top', offset:[0,-8] });
+
+  // Voeg windpijl control toe aan de kaart
+  windControl = createWindControl();
+  windControl.addTo(leafMap);
 }
 
 function updateMap(spot) {
@@ -707,31 +742,75 @@ function updateMap(spot) {
   leafMap.flyTo([spot.lat, spot.lon], 12, { duration:.8 });
   leafMarker.setLatLng([spot.lat, spot.lon]);
   leafMarker.setTooltipContent(`<b>${spot.name}</b>`);
-  document.getElementById('windBadge').classList.remove('show');
+  // Verberg windpijl bij spotwisseling
+  const ctrl = document.getElementById('windControlDiv');
+  if (ctrl) ctrl.style.display = 'none';
 }
 
 function drawArrow(deg, wkn) {
-  const cv = document.getElementById('windCanvas'); if (!cv) return;
-  const ctx = cv.getContext('2d'), cx=22, cy=22, r=19;
-  ctx.clearRect(0,0,44,44);
-  ctx.beginPath(); ctx.arc(cx,cy,r,0,2*Math.PI); ctx.fillStyle='rgba(0,255,136,0.08)'; ctx.fill(); ctx.strokeStyle='#00ff88'; ctx.lineWidth=1; ctx.stroke();
-  ctx.fillStyle='rgba(221,238,255,0.25)'; ctx.font='6px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('N',cx,cy-r+6); ctx.fillText('Z',cx,cy+r-6); ctx.fillText('W',cx-r+6,cy); ctx.fillText('O',cx+r-6,cy);
-  const rad = ((deg+180)*Math.PI)/180;
-  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rad);
-  ctx.beginPath(); ctx.moveTo(0,11); ctx.lineTo(0,-8); ctx.strokeStyle='#00ff88'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0,-13); ctx.lineTo(-4,-6); ctx.lineTo(4,-6); ctx.closePath(); ctx.fillStyle='#00ff88'; ctx.fill();
+  const canvas = document.getElementById('windCanvas'); if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = 26, cy = 26, r = 22;
+
+  ctx.clearRect(0, 0, 52, 52);
+
+  // Achtergrondcirkel
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.fillStyle = 'rgba(0,255,136,0.06)'; ctx.fill();
+  ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Kompasletters
+  ctx.fillStyle = 'rgba(221,238,255,0.2)';
+  ctx.font = '7px Barlow Condensed, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', cx, cy - r + 7);
+  ctx.fillText('Z', cx, cy + r - 7);
+  ctx.fillText('W', cx - r + 7, cy);
+  ctx.fillText('O', cx + r - 7, cy);
+
+  // Pijl — wind komt VAN deg, pijl wijst NAAR deg+180
+  const rad = ((deg + 180) * Math.PI) / 180;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rad);
+
+  // Staart
+  ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -10);
+  ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke();
+
+  // Pijlpunt
+  ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(-5, -7); ctx.lineTo(5, -7);
+  ctx.closePath(); ctx.fillStyle = '#00ff88'; ctx.fill();
+
+  // Windsterkte streepjes
+  const streaks = Math.min(3, Math.floor(wkn / 10));
+  for (let i = 0; i < streaks; i++) {
+    ctx.beginPath(); ctx.moveTo(0, 2 + i * 5); ctx.lineTo(5 + i * 2, -1 + i * 5);
+    ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
   ctx.restore();
 }
 
 function showWind(wkn, deg) {
-  document.getElementById('wbKn').textContent = wkn + ' kn';
-  document.getElementById('wbDir').textContent = compass(deg) + ' ' + deg + '°';
-  document.getElementById('windBadge').classList.add('show');
-  if (animFrame) cancelAnimationFrame(animFrame);
+  const dirName = compass(deg);
+
+  // Toon de Leaflet control
+  const ctrl = document.getElementById('windControlDiv');
+  if (ctrl) ctrl.style.display = 'flex';
+
+  // Vul tekst in
+  const wcKn  = document.getElementById('wcKn');
+  const wcDir = document.getElementById('wcDir');
+  if (wcKn)  wcKn.textContent  = wkn + ' kn';
+  if (wcDir) wcDir.textContent = `${dirName} · ${deg}°`;
+
+  // Start animerende pijl
+  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
   const amp = Math.min(8, wkn * 0.3); let t = 0;
-  function loop(ts) { t = ts * 0.0008; drawArrow(deg + Math.sin(t)*amp, wkn); animFrame = requestAnimationFrame(loop); }
-  animFrame = requestAnimationFrame(loop);
+  function animate(ts) {
+    t = ts * 0.0008;
+    drawArrow(deg + Math.sin(t) * amp, wkn);
+    windAnimFrame = requestAnimationFrame(animate);
+  }
+  windAnimFrame = requestAnimationFrame(animate);
 }
 
 // ── SPOT CHIPS ────────────────────────────────────────────────
