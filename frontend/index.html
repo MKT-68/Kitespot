@@ -981,9 +981,6 @@ function lg(type, msg) {
 // ── AGENT ────────────────────────────────────────────────────
 async function runAgent() {
   if (forecastAnimTimer) clearInterval(forecastAnimTimer);
-
-console.log('forecastFrames:', forecastFrames);
-
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
 
@@ -1016,6 +1013,9 @@ console.log('forecastFrames:', forecastFrames);
            }));
 
     forecastIndex = 0;
+
+    //🔥 NIEUW
+    console.log('forecastFrames:', forecastFrames);
 
     const w = {
       kn: kn(c.wind_kph),
