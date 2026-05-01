@@ -242,15 +242,22 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
 .map-box { border:1px solid var(--border2); border-radius:10px; overflow:hidden; margin-bottom:14px; position:relative; }
 #spotMap  { width:100%; height:220px; }
 
-.wind-badge {
-  position:absolute; top:10px; right:10px; z-index:1000;
-  background:rgba(6,14,24,0.92); border:1px solid var(--border2); border-radius:8px;
-  padding:8px 12px; display:none; align-items:center; gap:8px; pointer-events:none;
+.wind-control {
+  background: rgba(6,14,24,0.95) !important;
+  border: 1px solid var(--border2) !important;
+  padding: 10px 14px !important;
+  border-radius: 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.6) !important;
+  min-width: 120px;
 }
-.wind-badge.show { display:flex; }
-.wb-kn    { font-family:var(--cond); font-size:1.2rem; font-weight:800; color:var(--foam); line-height:1; }
-.wb-dir   { font-family:var(--cond); font-size:10px; color:var(--muted); }
-.wb-label { font-family:var(--cond); font-size:9px; color:var(--green); text-transform:uppercase; letter-spacing:.1em; }
+.wind-control canvas { display:block; flex-shrink:0; }
+.wind-control-info { display:flex; flex-direction:column; gap:2px; }
+.wind-control-kn  { font-family:var(--cond); font-size:1.3rem; font-weight:800; line-height:1; color:var(--foam); }
+.wind-control-dir { font-family:var(--cond); font-size:10px; color:var(--muted); }
+.wind-control-lbl { font-family:var(--cond); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--green); }
 
 .analyse-btn {
   width:100%; padding:16px;
@@ -734,43 +741,6 @@ function showWind(wkn, deg) {
   animFrame = requestAnimationFrame(loop);
 }
 
-// ── WIND ARROW OVERLAY (Leaflet) ──────────────────────────
-let windMarker = null;
-
-function createWindIcon(deg) {
-  return L.divIcon({
-    className: 'wind-arrow-icon',
-    html: `
-      <div style="
-        transform: rotate(${deg + 180}deg);
-        width: 40px;
-        height: 40px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-      ">
-        <svg width="28" height="28" viewBox="0 0 24 24">
-          <path d="M2 11 L14 11 L14 6 L22 12 L14 18 L14 13 L2 13 Z"
-                fill="#00ff88"/>
-        </svg>
-      </div>
-    `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
-}
-
-function setWindOverlay(lat, lon, deg, speed) {
-  const icon = createWindIcon(deg);
-
-  if (!windMarker) {
-    windMarker = L.marker([lat, lon], { icon }).addTo(leafMap);
-  } else {
-    windMarker.setLatLng([lat, lon]);
-    windMarker.setIcon(icon);
-  }
-}
-
 // ── SPOT CHIPS ────────────────────────────────────────────────
 function renderChips() {
   const sc = document.getElementById('spotScroll'); sc.innerHTML = '';
@@ -842,11 +812,6 @@ async function runAgent() {
     };
 
     lg('ok', `Wind ${w.kn} kn · ${compass(w.dir)} · gusts: ${w.gust} kn`);
-
-
-    // 🔥 NIEUW
-    setWindOverlay(sel.lat, sel.lon, w.dir, w.kn);
-
 
     // Score berekenen (zelfde logica als ranking)
     const ev = score(w, sel);
