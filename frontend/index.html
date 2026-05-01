@@ -1043,5 +1043,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
   loadRanking();
   loadPlanning(); // ✅ NOW WORKS
+
+ // 🔥 AUTO REFRESH (elke 5 min)
+  setInterval(() => {
+    if (typeof sel !== 'undefined') {
+      runAgent();
+    }
+  }, 300000);
+
 });
 </script> 
