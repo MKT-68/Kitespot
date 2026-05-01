@@ -980,6 +980,7 @@ function lg(type, msg) {
 
 // ── AGENT ────────────────────────────────────────────────────
 async function runAgent() {
+  if (forecastAnimTimer) clearInterval(forecastAnimTimer);
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
 
@@ -1003,6 +1004,8 @@ async function runAgent() {
     }
 
     const c = data.current;
+
+    const hours = data.forecast?.forecastday?.[0]?.hour || [];
 
     forecastFrames = hours.slice(0, 6).map(h => ({
               deg: h.wind_degree,
