@@ -482,6 +482,9 @@ let leafMap = null, leafMarker = null, animFrame = null;
 let windControl = null;
 let windAnimFrame = null;
 let forecastLayer = null;
+let forecastFrames = [];
+let forecastIndex = 0;
+let forecastAnimTimer = null;
 
 // ── HELPERS ─────────────────────────────────────────────────
 function kn(kph) { return +(kph * 0.539957).toFixed(1); }
@@ -672,7 +675,7 @@ function dayLbl(str) {
   return `${DAYS[dt.getDay()]} · ${d} ${MONTHS[m-1]}`;
 }
 
-function drawForecast(lat, lon, hours) {
+function drawForecastFrame(lat, lon, frame, step) {
 
   if (forecastLayer) {
     forecastLayer.clearLayers();
@@ -680,26 +683,44 @@ function drawForecast(lat, lon, hours) {
     forecastLayer = L.layerGroup().addTo(leafMap);
   }
 
-  hours.forEach((h, i) => {
+  const offsetLat = lat + (step * 0.01);
 
-    const offsetLat = lat + (i * 0.01);
-
-    const icon = L.divIcon({
-      className: '',
-      html: `
-        <div style="
-          transform: rotate(${h.deg + 180}deg);
-          color:#ff4d4d;
-          font-size:16px;
-          text-shadow: 0 0 6px #ff4d4d;
-        ">➤</div>
-      `,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
-    });
-
-    L.marker([offsetLat, lon], { icon }).addTo(forecastLayer);
+  const icon = L.divIcon({
+    className: '',
+    html: `
+      <div style="
+        transform: rotate(${frame.deg + 180}deg);
+        color:#ff4d4d;
+        font-size:18px;
+        text-shadow: 0 0 6px #ff4d4d;
+      ">➤</div>
+    `,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
   });
+
+  L.marker([offsetLat, lon], { icon }).addTo(forecastLayer);
+}
+
+function startForecastAnimation(lat, lon) {
+
+  if (forecastAnimTimer) clearInterval(forecastAnimTimer);
+
+  forecastAnimTimer = setInterval(() => {
+
+    // const frame = forecastFrames[forecastIndex];🔥 NIEUW
+    const next = forecastFrames[forecastIndex];
+      drawForecastFrame(lat, lon, next, forecastIndex);
+
+    drawForecastFrame(lat, lon, frame, forecastIndex);
+
+    forecastIndex++;
+
+    if (forecastIndex >= forecastFrames.length) {
+      forecastIndex = 0; // loop
+    }
+
+  }, 1000); // ⏱️ snelheid (1 sec per uur)
 }
 
 
@@ -983,12 +1004,12 @@ async function runAgent() {
 
     const c = data.current;
 
-    const hours = data.forecast?.forecastday?.[0]?.hour || [];
-
-    const forecastData = hours.slice(0, 6).map(h => ({
-            deg: h.wind_degree,
-             kn: kn(h.wind_kph)
+    forecastFrames = hours.slice(0, 6).map(h => ({
+              deg: h.wind_degree,
+              kn: kn(h.wind_kph)
            }));
+
+    forecastIndex = 0;
 
     const w = {
       kn: kn(c.wind_kph),
@@ -1001,7 +1022,7 @@ async function runAgent() {
     lg('ok', `Wind ${w.kn} kn · ${compass(w.dir)} · gusts: ${w.gust} kn`);
            // 🔥 WIND UI UPDATE
     updateWindOverlay(w.kn, w.dir);
-    drawForecast(sel.lat, sel.lon, forecastData);
+   startForecastAnimation(sel.lat, sel.lon);
 
     // Score berekenen (zelfde logica als ranking)
     const ev = score(w, sel);
