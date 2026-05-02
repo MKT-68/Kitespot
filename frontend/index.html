@@ -630,27 +630,34 @@ function startWindAnimation(deg, kn) {
 
 // ── FORECAST ANIMATION ──────────────────────────────────────
 // Animeert windrichting door de tijd (smooth)
-function startForecastAnimation(lat, lon) {
+ function startForecastAnimation(lat, lon) {
+
+  if (forecastFrames.length >= 2) {
+    startForecastAnimation(sel.lat, sel.lon);
+  }
+
+  if (!forecastFrames || forecastFrames.length < 2) {
+    console.warn('Forecast animatie overgeslagen: geen data');
+    return;
+  }
 
   if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
 
   let frameIndex = 0;
-  let t = 0; // 0 → 1 overgang tussen 2 frames
+  let t = 0;
 
-function animate() {
+  function animate() {
+    const current = forecastFrames[frameIndex];
+    const next = forecastFrames[(frameIndex + 1) % forecastFrames.length];
 
-  const current = forecastFrames[frameIndex];
-  const next = forecastFrames[(frameIndex + 1) % forecastFrames.length];
+    if (!current || !next) return; // extra safety
 
-  const deg = lerpAngle(current.deg, next.deg, t);
-  const kn  = current.kn + (next.kn - current.kn) * t;
+    const deg = lerpAngle(current.deg, next.deg, t);
+    const kn  = current.kn + (next.kn - current.kn) * t;
 
-  console.log('anim tick', t); // 👈 HIER
-  console.log('frameIndex', frameIndex, 't', t);
+    drawForecastFrame(lat, lon, { deg, kn }, frameIndex, t);
 
-  drawForecastFrame(lat, lon, { deg, kn }, frameIndex, t);
-
-  t += 0.02; // snelheid (lager = smoother/langzamer)
+    t += 0.02;
 
     if (t >= 1) {
       t = 0;
@@ -1032,7 +1039,7 @@ function lg(type, msg) {
 
 // ── AGENT ────────────────────────────────────────────────────
 async function runAgent() {
-  if (forecastAnimTimer) clearInterval(forecastAnimTimer);
+  if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
 
