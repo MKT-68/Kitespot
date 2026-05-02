@@ -637,6 +637,23 @@ function startForecastAnimation(lat, lon) {
   animate();
 }
 
+// ── WIND COMPASS ANIMATIE ─────────────────────────────
+
+function startWindAnimation(deg, kn) {
+  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
+
+  const amplitude = Math.min(8, kn * 0.3);
+  const speed = 0.002;
+
+  function animate(ts) {
+    const wobble = Math.sin(ts * speed) * amplitude;
+    drawWindArrow(deg + wobble, kn);
+    windAnimFrame = requestAnimationFrame(animate);
+  }
+
+  windAnimFrame = requestAnimationFrame(animate);
+}
+
 // ── ANIMATIE pijl draait vloeiend ──────────────────────────────
 
 function lerpAngle(a, b, t) {
