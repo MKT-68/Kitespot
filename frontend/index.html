@@ -622,7 +622,7 @@ function startForecastAnimation(lat, lon) {
     const deg = lerpAngle(current.deg, next.deg, t);
     const kn  = current.kn + (next.kn - current.kn) * t;
 
-    drawForecastFrame(lat, lon, { deg, kn }, frameIndex);
+   drawForecastFrame(lat, lon, { deg, kn }, frameIndex, t);
 
     t += 0.02; // snelheid (lager = smoother/langzamer)
 
@@ -721,7 +721,7 @@ function dayLbl(str) {
   return `${DAYS[dt.getDay()]} · ${d} ${MONTHS[m-1]}`;
 }
 
-function drawForecastFrame(lat, lon, frame, step) {
+function drawForecastFrame(lat, lon, frame, step, t) {
 
   if (forecastLayer) {
     forecastLayer.clearLayers();
@@ -729,19 +729,31 @@ function drawForecastFrame(lat, lon, frame, step) {
     forecastLayer = L.layerGroup().addTo(leafMap);
   }
 
-  const offsetLat = lat + (step * 0.01);
+  // 📍 smooth positie (optioneel maar aanbevolen)
+  const offsetLat = lat + ((step + t) * 0.01);
+
+  // ⏱️ tijd label (afronden of smooth)
+  const hourLabel = `+${Math.round(step + t)}h`;
 
   const icon = L.divIcon({
     className: '',
     html: `
-      <div style="
-        transform: rotate(${frame.deg + 180}deg);
-        color:#ff4d4d;
-        font-size:18px;
-      ">➤</div>
+      <div style="text-align:center;">
+        <div style="
+          transform: rotate(${frame.deg + 180}deg);
+          color:#ff4d4d;
+          font-size:18px;
+          text-shadow: 0 0 6px #ff4d4d;
+        ">➤</div>
+        <div style="
+          font-size:10px;
+          color:white;
+          margin-top:-2px;
+        ">${hourLabel}</div>
+      </div>
     `,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10]
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
   });
 
   L.marker([offsetLat, lon], { icon }).addTo(forecastLayer);
