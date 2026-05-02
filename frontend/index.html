@@ -453,6 +453,21 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
 
 <script>
 
+// ── SPOTS ───────────────────────────────────────────────────
+const SPOTS = [
+  {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
+  {id:'andijk',       name:'Andijk',       lat:52.7393,lon:5.175, type:'IJsselmeer · Vlak', ideal:'NO–NW wind', iF:45, iT:315,iM:0  },
+  {id:'medemblik',    name:'Medemblik',    lat:52.755, lon:5.124, type:'IJsselmeer · Vlak', ideal:'N–O wind',   iF:0,  iT:90, iM:45 },
+  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
+  {id:'warden',       name:'Warder',       lat:52.533, lon:5.060, type:'Markermeer · Vlak', ideal:'NO–ZO wind', iF:45, iT:135,iM:90 },
+  {id:'edam',         name:'Edam',         lat:52.515, lon:5.075, type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  iF:0,  iT:135,iM:68 },
+  {id:'camperduin',   name:'Camperduin',   lat:52.725, lon:4.637, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
+  {id:'ijmuiden',     name:'IJmuiden',     lat:52.455, lon:4.558, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
+];
+
+const DAYS   = ['zo','ma','di','wo','do','vr','za'];
+const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
 // ─────────────────────────────────────────────
 // GLOBAL STATE
 // ─────────────────────────────────────────────
@@ -473,21 +488,6 @@ const API_URL = "/api/analyse"; // ✅ FIXED (was hardcoded Vercel preview URL)
 
 // ✅ NEW: backend instead of Anthropic
 //const API_URL = "https://kitespot-git-main-mkt-68s-projects.vercel.app/api/analyse";
-
-// ── SPOTS ───────────────────────────────────────────────────
-const SPOTS = [
-  {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
-  {id:'andijk',       name:'Andijk',       lat:52.7393,lon:5.175, type:'IJsselmeer · Vlak', ideal:'NO–NW wind', iF:45, iT:315,iM:0  },
-  {id:'medemblik',    name:'Medemblik',    lat:52.755, lon:5.124, type:'IJsselmeer · Vlak', ideal:'N–O wind',   iF:0,  iT:90, iM:45 },
-  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
-  {id:'warden',       name:'Warder',       lat:52.533, lon:5.060, type:'Markermeer · Vlak', ideal:'NO–ZO wind', iF:45, iT:135,iM:90 },
-  {id:'edam',         name:'Edam',         lat:52.515, lon:5.075, type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  iF:0,  iT:135,iM:68 },
-  {id:'camperduin',   name:'Camperduin',   lat:52.725, lon:4.637, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
-  {id:'ijmuiden',     name:'IJmuiden',     lat:52.455, lon:4.558, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
-];
-
-const DAYS   = ['zo','ma','di','wo','do','vr','za'];
-const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
 // ── HELPERS ─────────────────────────────────────────────────
 // Windrichting tekst
