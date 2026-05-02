@@ -452,23 +452,28 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
 </div><!-- /shell -->
 
 <script>
+
+// ── GLOBAL STATE ─────────────────────────────────────────────
+let forecastFrames = [];
+let forecastAnimFrame = null;
+let forecastMarker = null;
+
 // ── CONFIG ──────────────────────────────────────────────────
 const API_URL = "/api/analyse"; // ✅ FIXED (was hardcoded Vercel preview URL)
-
 
 // ✅ NEW: backend instead of Anthropic
 //const API_URL = "https://kitespot-git-main-mkt-68s-projects.vercel.app/api/analyse";
 
 // ── SPOTS ───────────────────────────────────────────────────
 const SPOTS = [
-  {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
   {id:'andijk',       name:'Andijk',       lat:52.7393,lon:5.175, type:'IJsselmeer · Vlak', ideal:'NO–NW wind', iF:45, iT:315,iM:0  },
-  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
-  {id:'medemblik',    name:'Medemblik',    lat:52.755, lon:5.124, type:'IJsselmeer · Vlak', ideal:'N–O wind',   iF:0,  iT:90, iM:45 },
-  {id:'warden',       name:'Warder',       lat:52.533, lon:5.060, type:'Markermeer · Vlak', ideal:'NO–ZO wind', iF:45, iT:135,iM:90 },
-  {id:'edam',         name:'Edam',         lat:52.515, lon:5.075, type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  iF:0,  iT:135,iM:68 },
   {id:'camperduin',   name:'Camperduin',   lat:52.725, lon:4.637, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
+  {id:'edam',         name:'Edam',         lat:52.515, lon:5.075, type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  iF:0,  iT:135,iM:68 },
+  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
   {id:'ijmuiden',     name:'IJmuiden',     lat:52.455, lon:4.558, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
+  {id:'medemblik',    name:'Medemblik',    lat:52.755, lon:5.124, type:'IJsselmeer · Vlak', ideal:'N–O wind',   iF:0,  iT:90, iM:45 },
+  {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
+  {id:'warden',       name:'Warder',       lat:52.533, lon:5.060, type:'Markermeer · Vlak', ideal:'NO–ZO wind', iF:45, iT:135,iM:90 },
 ];
 
 const DAYS   = ['zo','ma','di','wo','do','vr','za'];
@@ -479,19 +484,25 @@ let sel = SPOTS[0];
 let leafMap = null, leafMarker = null, animFrame = null;
 
 // 🔥 NIEUW
-let windControl = null;
-let windAnimFrame = null;
-let forecastLayer = null;
-let forecastFrames = [];
-let forecastIndex = 0;
-let forecastAnimTimer = null;
-let forecastMarker = null;
+// let windControl = null;
+// let windAnimFrame = null;
+// let forecastFrames = [];
+// let forecastIndex = 0;
+// let forecastAnimTimer = null;
+// let forecastMarker = null;
+
+
 
 // ── HELPERS ─────────────────────────────────────────────────
-function kn(kph) { return +(kph * 0.539957).toFixed(1); }
+// Windrichting tekst
+function compass(deg) {
+  const dirs = ['N','NO','O','ZO','Z','ZW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
 
-function compass(d) {
-  return ['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
+// km/h → knopen
+function kn(kph) {
+  return Math.round(kph * 0.539957);
 }
 
 function windColor(kn) {
@@ -502,7 +513,6 @@ function windColor(kn) {
 }
 
 // ── WIND CONTROL ───────────────────────────────────────────
-
 function createWindControl() {
   const WindControl = L.Control.extend({
     options: { position: 'topright' },
@@ -541,15 +551,14 @@ function createWindControl() {
   return new WindControl();
 }
 
-// ── DRAW WIND (FIXED DIRECTION) ─────────────────────────────
-
+// ── DRAW WIND ARROW ─────────────────────────────────────────
+// Tekent windpijl in canvas (windkompas)
 function drawWindArrow(deg, kn) {
   const canvas = document.getElementById('windCanvas');
   if (!canvas) return;
 
   const ctx = canvas.getContext('2d');
   const cx = 26, cy = 26;
-  // 🔥 NIEUW
   const col = windColor(kn);
 
   ctx.clearRect(0, 0, 52, 52);
@@ -559,7 +568,6 @@ function drawWindArrow(deg, kn) {
   ctx.arc(cx, cy, 22, 0, 2*Math.PI);
   ctx.fillStyle = 'rgba(0,255,136,0.06)';
   ctx.fill();
-  // ctx.strokeStyle = '#00ff88'; 🔥 NIEUW
   ctx.strokeStyle = col;
   ctx.lineWidth = 1.5;
   ctx.stroke();
@@ -585,7 +593,6 @@ function drawWindArrow(deg, kn) {
   ctx.beginPath();
   ctx.moveTo(0, 12);
   ctx.lineTo(0, -10);
-  // ctx.strokeStyle = '#00ff88';🔥 NIEUW
   ctx.strokeStyle = col;
   ctx.lineWidth = 2.5;
   ctx.lineCap = 'round';
@@ -597,51 +604,48 @@ function drawWindArrow(deg, kn) {
   ctx.lineTo(-5, -7);
   ctx.lineTo(5, -7);
   ctx.closePath();
-  // ctx.fillStyle = '#00ff88';🔥 NIEUW
   ctx.fillStyle = col;
   ctx.fill();
 
   ctx.restore();
 }
 
-
-// ── ANIMATIE ───────────────────────────────────────────────
-
+// ── FORECAST ANIMATION ──────────────────────────────────────
+// Animeert windrichting door de tijd (smooth)
 function startForecastAnimation(lat, lon) {
 
-  if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
+  if (!forecastFrames.length) return;
+
+  if (forecastAnimFrame) cancelAnimationFrame(forecastAnimFrame);
 
   let frameIndex = 0;
-  let t = 0; // 0 → 1 overgang tussen 2 frames
+  let t = 0;
 
-function animate() {
+  function animate() {
 
-  const current = forecastFrames[frameIndex];
-  const next = forecastFrames[(frameIndex + 1) % forecastFrames.length];
+    const current = forecastFrames[frameIndex];
+    const next = forecastFrames[(frameIndex + 1) % forecastFrames.length];
 
-  const deg = lerpAngle(current.deg, next.deg, t);
-  const kn  = current.kn + (next.kn - current.kn) * t;
+    const deg = lerpAngle(current.deg, next.deg, t);
+    const kn  = current.kn + (next.kn - current.kn) * t;
 
-  console.log('anim tick', t); // 👈 HIER
-  console.log('frameIndex', frameIndex, 't', t);
+    drawForecastFrame(lat, lon, { deg, kn }, frameIndex, t);
 
-  drawForecastFrame(lat, lon, { deg, kn }, frameIndex, t);
-
-  t += 0.02; // snelheid (lager = smoother/langzamer)
+    t += 0.015;
 
     if (t >= 1) {
       t = 0;
       frameIndex = (frameIndex + 1) % forecastFrames.length;
     }
 
-    forecastAnimTimer = requestAnimationFrame(animate);
+    forecastAnimFrame = requestAnimationFrame(animate);
   }
 
   animate();
 }
 
-// ── WIND COMPASS ANIMATIE ─────────────────────────────
-
+// ── WIND ANIMATION ──────────────────────────────────────────
+// Animeert huidige wind (lichte wobble)
 function startWindAnimation(deg, kn) {
   if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
 
@@ -658,7 +662,6 @@ function startWindAnimation(deg, kn) {
 }
 
 // ── ANIMATIE pijl draait vloeiend ──────────────────────────────
-
 function lerpAngle(a, b, t) {
   let diff = b - a;
 
@@ -670,18 +673,11 @@ function lerpAngle(a, b, t) {
 }
 
 // ── UPDATE WIND OVERLAY ─────────────────────────────────────
+// Update UI + start wind animatie
 
-function updateWindOverlay(kn, deg
-) {
-
+function updateWindOverlay(kn, deg) {
   const ctrl = document.getElementById('windControlDiv');
   if (ctrl) ctrl.style.display = 'flex';
-  ctrl.style.opacity = 0;
-
-  setTimeout(() => {
-  ctrl.style.transition = 'opacity 0.4s ease';
-  ctrl.style.opacity = 1;
-  }, 50);
 
   document.getElementById('wcKn').textContent = kn + ' kn';
   document.getElementById('wcDir').textContent = `${compass(deg)} · ${deg}°`;
@@ -724,13 +720,16 @@ function dayLbl(str) {
   return `${DAYS[dt.getDay()]} · ${d} ${MONTHS[m-1]}`;
 }
 
+// ── DRAW FORECAST FRAME ─────────────────────────────────────
+// Tekent 1 frame van de forecast (pijl + tijdlabel)
 function drawForecastFrame(lat, lon, frame, step, t) {
 
-  const safeT    = (typeof t === 'number') ? t : 0;
+  const safeT = (typeof t === 'number') ? t : 0;
   const safeStep = (typeof step === 'number') ? step : 0;
 
   const offsetLat = lat + ((safeStep + safeT) * 0.003);
-  const hour      = Math.round(safeStep + safeT);
+
+  const hour = Math.max(1, Math.round(safeStep + safeT));
   const hourLabel = `+${hour}h`;
 
   const html = `
@@ -740,30 +739,25 @@ function drawForecastFrame(lat, lon, frame, step, t) {
         color:#ff4d4d;
         font-size:18px;
         text-shadow: 0 0 6px #ff4d4d;
-      ">
-        ➤
-      </div>
+      ">➤</div>
       <div style="
         font-size:10px;
         color:#ff4d4d;
         font-weight:bold;
         text-shadow: 0 0 4px #ff4d4d;
-        margin-top:-2px;
-      ">
-        ${hourLabel}
-     </div>
+      ">${hourLabel}</div>
+    </div>
   `;
 
   const icon = L.divIcon({
     className: '',
-    html: html,
+    html,
     iconSize: [30, 30],
     iconAnchor: [15, 15]
   });
 
-  // 🔥 HERGEBRUIK MARKER
   if (!forecastMarker) {
-    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(leafMap);
+    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(map);
   } else {
     forecastMarker.setLatLng([offsetLat, lon]);
     forecastMarker.setIcon(icon);
@@ -972,7 +966,7 @@ function initMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OSM', maxZoom:18 }).addTo(leafMap);
   const ico = L.divIcon({ className:'', html:`<div style="width:12px;height:12px;background:#00ff88;border:2px solid rgba(3,8,15,.8);border-radius:50%;box-shadow:0 0 8px #00ff88"></div>`, iconSize:[12,12], iconAnchor:[6,6] });
   leafMarker = L.marker([sel.lat, sel.lon], { icon:ico }).addTo(leafMap).bindTooltip(`<b>${sel.name}</b>`, { direction:'top', offset:[0,-8] });
-// 🔥 NIEUW
+
   windControl = createWindControl();
   windControl.addTo(leafMap);
 }
@@ -1077,22 +1071,9 @@ async function runAgent() {
     forecastFrames = hours.slice(0, 6).map(h => ({
               deg: h.wind_degree,
               kn: kn(h.wind_kph)
-           }));
+          }));
 
-    forecastIndex = 0;
-
-    const w = {
-      kn: kn(c.wind_kph),
-      gust: kn(c.gust_kph),
-      dir: c.wind_degree,
-      rain: c.precip_mm,
-      temp: c.temp_c
-    };
-
-    lg('ok', `Wind ${w.kn} kn · ${compass(w.dir)} · gusts: ${w.gust} kn`);
-           // 🔥 WIND UI UPDATE
-    updateWindOverlay(w.kn, w.dir);
-   startForecastAnimation(sel.lat, sel.lon);
+    startForecastAnimation(sel.lat, sel.lon);
 
     // Score berekenen (zelfde logica als ranking)
     const ev = score(w, sel);
