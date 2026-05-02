@@ -540,7 +540,6 @@ function createWindControl() {
   return new WindControl();
 }
 
-
 // ── DRAW WIND (FIXED DIRECTION) ─────────────────────────────
 
 function drawWindArrow(deg, kn) {
@@ -607,18 +606,48 @@ function drawWindArrow(deg, kn) {
 
 // ── ANIMATIE ───────────────────────────────────────────────
 
-function startWindAnimation(deg, kn) {
-  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
+function startForecastAnimation(lat, lon) {
 
-  function animate(ts) {
-    const wobble = Math.sin(ts * 0.002) * Math.min(6, kn * 0.3);
-    drawWindArrow(deg + wobble, kn);
-    windAnimFrame = requestAnimationFrame(animate);
+  if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
+
+  let frameIndex = 0;
+  let t = 0; // 0 → 1 overgang tussen 2 frames
+
+  function animate() {
+
+    const current = forecastFrames[frameIndex];
+    const next = forecastFrames[(frameIndex + 1) % forecastFrames.length];
+
+    // interpolatie
+    const deg = lerpAngle(current.deg, next.deg, t);
+    const kn  = current.kn + (next.kn - current.kn) * t;
+
+    drawForecastFrame(lat, lon, { deg, kn }, frameIndex);
+
+    t += 0.02; // snelheid (lager = smoother/langzamer)
+
+    if (t >= 1) {
+      t = 0;
+      frameIndex = (frameIndex + 1) % forecastFrames.length;
+    }
+
+    forecastAnimTimer = requestAnimationFrame(animate);
   }
 
-  windAnimFrame = requestAnimationFrame(animate);
+  animate();
 }
 
+// ── ANIMATIE pijl draait vloeiend ──────────────────────────────
+
+function lerpAngle(a, b, t) {
+  let diff = b - a;
+
+  // kortste rotatiepad (belangrijk bij 350° → 10°)
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+
+  return a + diff * t;
+}
 
 // ── UPDATE WIND OVERLAY ─────────────────────────────────────
 
