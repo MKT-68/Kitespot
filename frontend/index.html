@@ -474,8 +474,8 @@ const API_URL = "/api/analyse"; // ✅ FIXED (was hardcoded Vercel preview URL)
 const SPOTS = [
   {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
   {id:'andijk',       name:'Andijk',       lat:52.7393,lon:5.175, type:'IJsselmeer · Vlak', ideal:'NO–NW wind', iF:45, iT:315,iM:0  },
-  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
   {id:'medemblik',    name:'Medemblik',    lat:52.755, lon:5.124, type:'IJsselmeer · Vlak', ideal:'N–O wind',   iF:0,  iT:90, iM:45 },
+  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
   {id:'warden',       name:'Warder',       lat:52.533, lon:5.060, type:'Markermeer · Vlak', ideal:'NO–ZO wind', iF:45, iT:135,iM:90 },
   {id:'edam',         name:'Edam',         lat:52.515, lon:5.075, type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  iF:0,  iT:135,iM:68 },
   {id:'camperduin',   name:'Camperduin',   lat:52.725, lon:4.637, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
@@ -514,7 +514,6 @@ function windColor(kn) {
 }
 
 // ── WIND CONTROL ───────────────────────────────────────────
-
 function createWindControl() {
   const WindControl = L.Control.extend({
     options: { position: 'topright' },
@@ -553,15 +552,14 @@ function createWindControl() {
   return new WindControl();
 }
 
-// ── DRAW WIND (FIXED DIRECTION) ─────────────────────────────
-
+// ── DRAW WIND ARROW ─────────────────────────────────────────
+// Tekent windpijl in canvas (windkompas)
 function drawWindArrow(deg, kn) {
   const canvas = document.getElementById('windCanvas');
   if (!canvas) return;
 
   const ctx = canvas.getContext('2d');
   const cx = 26, cy = 26;
-  // 🔥 NIEUW
   const col = windColor(kn);
 
   ctx.clearRect(0, 0, 52, 52);
@@ -571,7 +569,6 @@ function drawWindArrow(deg, kn) {
   ctx.arc(cx, cy, 22, 0, 2*Math.PI);
   ctx.fillStyle = 'rgba(0,255,136,0.06)';
   ctx.fill();
-  // ctx.strokeStyle = '#00ff88'; 🔥 NIEUW
   ctx.strokeStyle = col;
   ctx.lineWidth = 1.5;
   ctx.stroke();
@@ -597,7 +594,6 @@ function drawWindArrow(deg, kn) {
   ctx.beginPath();
   ctx.moveTo(0, 12);
   ctx.lineTo(0, -10);
-  // ctx.strokeStyle = '#00ff88';🔥 NIEUW
   ctx.strokeStyle = col;
   ctx.lineWidth = 2.5;
   ctx.lineCap = 'round';
@@ -609,16 +605,32 @@ function drawWindArrow(deg, kn) {
   ctx.lineTo(-5, -7);
   ctx.lineTo(5, -7);
   ctx.closePath();
-  // ctx.fillStyle = '#00ff88';🔥 NIEUW
   ctx.fillStyle = col;
   ctx.fill();
 
   ctx.restore();
 }
 
+// ── WIND ANIMATION ──────────────────────────────────────────
+// Animeert huidige wind (lichte wobble)
+function startWindAnimation(deg, kn) {
+  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
 
-// ── ANIMATIE ───────────────────────────────────────────────
+  const amplitude = Math.min(8, kn * 0.3);
+  const speed = 0.002;
 
+  function animate(ts) {
+    const wobble = Math.sin(ts * speed) * amplitude;
+    drawWindArrow(deg + wobble, kn);
+    windAnimFrame = requestAnimationFrame(animate);
+  }
+
+  windAnimFrame = requestAnimationFrame(animate);
+}
+
+
+// ── FORECAST ANIMATION ──────────────────────────────────────
+// Animeert windrichting door de tijd (smooth)
 function startForecastAnimation(lat, lon) {
 
   if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
@@ -652,25 +664,7 @@ function animate() {
   animate();
 }
 
-// ── WIND COMPASS ANIMATIE ─────────────────────────────
-
-function startWindAnimation(deg, kn) {
-  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
-
-  const amplitude = Math.min(8, kn * 0.3);
-  const speed = 0.002;
-
-  function animate(ts) {
-    const wobble = Math.sin(ts * speed) * amplitude;
-    drawWindArrow(deg + wobble, kn);
-    windAnimFrame = requestAnimationFrame(animate);
-  }
-
-  windAnimFrame = requestAnimationFrame(animate);
-}
-
 // ── ANIMATIE pijl draait vloeiend ──────────────────────────────
-
 function lerpAngle(a, b, t) {
   let diff = b - a;
 
@@ -682,9 +676,8 @@ function lerpAngle(a, b, t) {
 }
 
 // ── UPDATE WIND OVERLAY ─────────────────────────────────────
-
-function updateWindOverlay(kn, deg
-) {
+// Update UI + start wind animatie
+function updateWindOverlay(kn, deg) {
 
   const ctrl = document.getElementById('windControlDiv');
   if (ctrl) ctrl.style.display = 'flex';
@@ -736,6 +729,8 @@ function dayLbl(str) {
   return `${DAYS[dt.getDay()]} · ${d} ${MONTHS[m-1]}`;
 }
 
+// ── DRAW FORECAST FRAME ─────────────────────────────────────
+// Tekent 1 frame van de forecast (pijl + tijdlabel)
 function drawForecastFrame(lat, lon, frame, step, t) {
 
   const safeT    = (typeof t === 'number') ? t : 0;
