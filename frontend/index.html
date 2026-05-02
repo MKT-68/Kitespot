@@ -454,8 +454,11 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
 <script>
 
 // ── GLOBAL STATE ─────────────────────────────────────────────
+let windControl = null;
+let windAnimFrame = null;
 let forecastFrames = [];
-let forecastAnimFrame = null;
+let forecastIndex = 0;
+let forecastAnimTimer = null;
 let forecastMarker = null;
 
 // ── CONFIG ──────────────────────────────────────────────────
@@ -482,16 +485,6 @@ const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov
 let sel = SPOTS[0];
 
 let leafMap = null, leafMarker = null, animFrame = null;
-
-// 🔥 NIEUW
-// let windControl = null;
-// let windAnimFrame = null;
-// let forecastFrames = [];
-// let forecastIndex = 0;
-// let forecastAnimTimer = null;
-// let forecastMarker = null;
-
-
 
 // ── HELPERS ─────────────────────────────────────────────────
 // Windrichting tekst
