@@ -623,6 +623,7 @@ function animate() {
   const kn  = current.kn + (next.kn - current.kn) * t;
 
   console.log('anim tick', t); // 👈 HIER
+  console.log('frameIndex', frameIndex, 't', t);
 
   drawForecastFrame(lat, lon, { deg, kn }, frameIndex, t);
 
@@ -725,7 +726,12 @@ function dayLbl(str) {
 
 function drawForecastFrame(lat, lon, frame, step, t) {
 
-  const offsetLat = lat + ((step + t) * 0.01);
+  // const offsetLat = lat + ((step + t) * 0.01); Vervangen door onderstaande
+  const safeT = (typeof t === 'number') ? t : 0;
+  const offsetLat = lat + ((step + safeT) * 0.003);
+
+  // 🔍 DEBUG
+  console.log('lat:', lat, 'step:', step, 't:', t);
 
   const hourLabel = `+${Math.round(step + t)}h`;
 
@@ -762,6 +768,8 @@ function drawForecastFrame(lat, lon, frame, step, t) {
 }
 
 function startForecastAnimation(lat, lon) {
+  let frameIndex = 0;
+  let t = 0;
 
   if (forecastAnimTimer) clearInterval(forecastAnimTimer);
 
@@ -1069,9 +1077,6 @@ async function runAgent() {
            }));
 
     forecastIndex = 0;
-
-    //🔥 NIEUW
-    console.log('forecastFrames:', forecastFrames);
 
     const w = {
       kn: kn(c.wind_kph),
