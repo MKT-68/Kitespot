@@ -726,21 +726,12 @@ function dayLbl(str) {
 
 function drawForecastFrame(lat, lon, frame, step, t) {
 
-  // const offsetLat = lat + ((step + t) * 0.01); Vervangen door onderstaande
-  const safeT = (typeof t === 'number') ? t : 0;
-  const offsetLat = lat + ((step + safeT) * 0.003);
+  const safeT    = (typeof t === 'number') ? t : 0;
+  const safeStep = (typeof step === 'number') ? step : 0;
 
-  // 🔍 DEBUG
-  console.log('lat:', lat, 'step:', step, 't:', t);
-
-  // const hourLabel = `+${Math.round(step + t)}h`;
-
-const safeT   = (typeof t === 'number') ? t : 0;
-const safeStep = (typeof step === 'number') ? step : 0;
-
-const hour = Math.round(safeStep + safeT);
-const hourLabel = `+${hour}h`;
-
+  const offsetLat = lat + ((safeStep + safeT) * 0.003);
+  const hour      = Math.round(safeStep + safeT);
+  const hourLabel = `+${hour}h`;
 
   const html = `
     <div style="text-align:center;">
