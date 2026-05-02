@@ -453,158 +453,154 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
 
 <script>
 
-// ── GLOBAL STATE ─────────────────────────────────────────────
-let windControl = null;
+// ─────────────────────────────────────────────
+// GLOBAL STATE
+// ─────────────────────────────────────────────
+let map = null;
+let spotMarker = null;
+
 let windAnimFrame = null;
+
 let forecastFrames = [];
-let forecastIndex = 0;
-let forecastAnimTimer = null;
+let forecastAnimFrame = null;
 let forecastMarker = null;
 
-// ── CONFIG ──────────────────────────────────────────────────
-const API_URL = "/api/analyse"; // ✅ FIXED (was hardcoded Vercel preview URL)
 
-// ✅ NEW: backend instead of Anthropic
-//const API_URL = "https://kitespot-git-main-mkt-68s-projects.vercel.app/api/analyse";
-
-// ── SPOTS ───────────────────────────────────────────────────
-const SPOTS = [
-  {id:'andijk',       name:'Andijk',       lat:52.7393,lon:5.175, type:'IJsselmeer · Vlak', ideal:'NO–NW wind', iF:45, iT:315,iM:0  },
-  {id:'camperduin',   name:'Camperduin',   lat:52.725, lon:4.637, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
-  {id:'edam',         name:'Edam',         lat:52.515, lon:5.075, type:'IJsselmeer · Vlak', ideal:'N–ZO wind',  iF:0,  iT:135,iM:68 },
-  {id:'hondenhemel',  name:'Hondenhemel',  lat:52.6855,lon:5.246, type:'IJsselmeer · Vlak', ideal:'NO–Z wind',  iF:45, iT:180,iM:113},
-  {id:'ijmuiden',     name:'IJmuiden',     lat:52.455, lon:4.558, type:'Zee · Strand',      ideal:'ZW–NW wind', iF:225,iT:315,iM:270},
-  {id:'medemblik',    name:'Medemblik',    lat:52.755, lon:5.124, type:'IJsselmeer · Vlak', ideal:'N–O wind',   iF:0,  iT:90, iM:45 },
-  {id:'schellinkhout',name:'Schellinkhout',lat:52.633, lon:5.121, type:'IJsselmeer · Vlak', ideal:'ZO–ZW wind', iF:135,iT:225,iM:180},
-  {id:'warden',       name:'Warder',       lat:52.533, lon:5.060, type:'Markermeer · Vlak', ideal:'NO–ZO wind', iF:45, iT:135,iM:90 },
-];
-
-const DAYS   = ['zo','ma','di','wo','do','vr','za'];
-const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-
-let sel = SPOTS[0];
-
-let leafMap = null, leafMarker = null, animFrame = null;
-
-// ── HELPERS ─────────────────────────────────────────────────
-// Windrichting tekst
-function compass(deg) {
-  const dirs = ['N','NO','O','ZO','Z','ZW','W','NW'];
-  return dirs[Math.round(deg / 45) % 8];
-}
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
 
 // km/h → knopen
 function kn(kph) {
   return Math.round(kph * 0.539957);
 }
 
-function windColor(kn) {
-  if (kn < 10) return '#6b7280';     // grijs (te weinig wind)
-  if (kn < 18) return '#00ff88';     // groen (perfect)
-  if (kn < 25) return '#ffd400';     // geel (power)
-  return '#ff4d4d';                  // rood (te hard)
+// graden → windrichting tekst
+function compass(deg) {
+  const dirs = ['N','NO','O','ZO','Z','ZW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
 }
 
-// ── WIND CONTROL ───────────────────────────────────────────
-function createWindControl() {
-  const WindControl = L.Control.extend({
-    options: { position: 'topright' },
-
-    onAdd: function() {
-      const div = L.DomUtil.create('div', 'wind-control');
-      div.id = 'windControlDiv';
-      div.style.display = 'none';
-      div.style.background = 'rgba(6,14,24,0.92)';
-      div.style.border = '1px solid rgba(255,255,255,0.1)';
-      div.style.borderRadius = '8px';
-      div.style.padding = '8px';
-      div.style.display = 'none';
-      div.style.alignItems = 'center';
-      div.style.gap = '8px';
-
-      const canvas = document.createElement('canvas');
-      canvas.width = 52;
-      canvas.height = 52;
-      canvas.id = 'windCanvas';
-
-      const info = document.createElement('div');
-      info.innerHTML = `
-        <div id="wcKn" style="font-family:Barlow Condensed;font-size:18px;font-weight:800;color:#fff">—</div>
-        <div id="wcDir" style="font-family:Barlow Condensed;font-size:10px;color:#aaa">—</div>
-      `;
-
-      div.appendChild(canvas);
-      div.appendChild(info);
-
-      L.DomEvent.disableClickPropagation(div);
-      return div;
-    }
-  });
-
-  return new WindControl();
+// hoek interpolatie (smooth rotatie)
+function lerpAngle(a, b, t) {
+  let diff = b - a;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+  return a + diff * t;
 }
 
-// ── DRAW WIND ARROW ─────────────────────────────────────────
-// Tekent windpijl in canvas (windkompas)
+
+// ─────────────────────────────────────────────
+// WIND COMPASS (CANVAS)
+// ─────────────────────────────────────────────
+
+// Tekent windpijl
 function drawWindArrow(deg, kn) {
   const canvas = document.getElementById('windCanvas');
   if (!canvas) return;
 
   const ctx = canvas.getContext('2d');
-  const cx = 26, cy = 26;
-  const col = windColor(kn);
+  const cx = 26, cy = 26, r = 22;
 
   ctx.clearRect(0, 0, 52, 52);
 
-  // achtergrond cirkel
   ctx.beginPath();
-  ctx.arc(cx, cy, 22, 0, 2*Math.PI);
+  ctx.arc(cx, cy, r, 0, 2 * Math.PI);
   ctx.fillStyle = 'rgba(0,255,136,0.06)';
   ctx.fill();
-  ctx.strokeStyle = col;
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#00ff88';
   ctx.stroke();
 
-  // kompas letters
-  ctx.fillStyle = 'rgba(221,238,255,0.3)';
-  ctx.font = '8px Barlow Condensed';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('N', cx, cy - 18);
-  ctx.fillText('Z', cx, cy + 18);
-  ctx.fillText('W', cx - 18, cy);
-  ctx.fillText('O', cx + 18, cy);
-
-  // 🔥 FIX: +180 graden (wind FROM → TO)
   const rad = ((deg + 180) * Math.PI) / 180;
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(rad);
 
-  // staart
   ctx.beginPath();
-  ctx.moveTo(0, 12);
+  ctx.moveTo(0, 14);
   ctx.lineTo(0, -10);
-  ctx.strokeStyle = col;
+  ctx.strokeStyle = '#00ff88';
   ctx.lineWidth = 2.5;
-  ctx.lineCap = 'round';
   ctx.stroke();
 
-  // pijlpunt
   ctx.beginPath();
   ctx.moveTo(0, -16);
   ctx.lineTo(-5, -7);
   ctx.lineTo(5, -7);
   ctx.closePath();
-  ctx.fillStyle = col;
+  ctx.fillStyle = '#00ff88';
   ctx.fill();
 
   ctx.restore();
 }
 
-// ── FORECAST ANIMATION ──────────────────────────────────────
-// Animeert windrichting door de tijd (smooth)
+
+// Animeert huidige wind
+function startWindAnimation(deg, kn) {
+  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
+
+  const amplitude = Math.min(8, kn * 0.3);
+
+  function animate(ts) {
+    const wobble = Math.sin(ts * 0.002) * amplitude;
+    drawWindArrow(deg + wobble, kn);
+    windAnimFrame = requestAnimationFrame(animate);
+  }
+
+  windAnimFrame = requestAnimationFrame(animate);
+}
+
+
+// ─────────────────────────────────────────────
+// FORECAST VISUALISATIE
+// ─────────────────────────────────────────────
+
+// Tekent 1 frame
+function drawForecastFrame(lat, lon, frame, step, t) {
+
+  const safeT = (typeof t === 'number') ? t : 0;
+  const safeStep = (typeof step === 'number') ? step : 0;
+
+  const offsetLat = lat + ((safeStep + safeT) * 0.003);
+
+  const hour = Math.max(1, Math.round(safeStep + safeT));
+  const label = `+${hour}h`;
+
+  const html = `
+    <div style="text-align:center;">
+      <div style="
+        transform: rotate(${frame.deg + 180}deg);
+        color:#ff4d4d;
+        font-size:18px;
+        text-shadow:0 0 6px #ff4d4d;
+      ">➤</div>
+      <div style="
+        font-size:10px;
+        color:#ff4d4d;
+        font-weight:bold;
+        text-shadow:0 0 4px #ff4d4d;
+      ">${label}</div>
+    </div>
+  `;
+
+  const icon = L.divIcon({
+    className: '',
+    html,
+    iconSize: [30,30],
+    iconAnchor: [15,15]
+  });
+
+  if (!forecastMarker) {
+    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(map);
+  } else {
+    forecastMarker.setLatLng([offsetLat, lon]);
+    forecastMarker.setIcon(icon);
+  }
+}
+
+
+// Smooth forecast animatie
 function startForecastAnimation(lat, lon) {
 
   if (!forecastFrames.length) return;
@@ -637,413 +633,37 @@ function startForecastAnimation(lat, lon) {
   animate();
 }
 
-// ── WIND ANIMATION ──────────────────────────────────────────
-// Animeert huidige wind (lichte wobble)
-function startWindAnimation(deg, kn) {
-  if (windAnimFrame) cancelAnimationFrame(windAnimFrame);
 
-  const amplitude = Math.min(8, kn * 0.3);
-  const speed = 0.002;
+// ─────────────────────────────────────────────
+// WIND UI UPDATE
+// ─────────────────────────────────────────────
 
-  function animate(ts) {
-    const wobble = Math.sin(ts * speed) * amplitude;
-    drawWindArrow(deg + wobble, kn);
-    windAnimFrame = requestAnimationFrame(animate);
-  }
+function updateWindOverlay(knots, deg) {
 
-  windAnimFrame = requestAnimationFrame(animate);
-}
-
-// ── ANIMATIE pijl draait vloeiend ──────────────────────────────
-function lerpAngle(a, b, t) {
-  let diff = b - a;
-
-  // kortste rotatiepad (belangrijk bij 350° → 10°)
-  if (diff > 180) diff -= 360;
-  if (diff < -180) diff += 360;
-
-  return a + diff * t;
-}
-
-// ── UPDATE WIND OVERLAY ─────────────────────────────────────
-// Update UI + start wind animatie
-
-function updateWindOverlay(kn, deg) {
   const ctrl = document.getElementById('windControlDiv');
   if (ctrl) ctrl.style.display = 'flex';
 
-  document.getElementById('wcKn').textContent = kn + ' kn';
+  document.getElementById('wcKn').textContent = knots + ' kn';
   document.getElementById('wcDir').textContent = `${compass(deg)} · ${deg}°`;
 
-  startWindAnimation(deg, kn);
+  startWindAnimation(deg, knots);
 }
 
-function dscore(deg, spot) {
-  const arc = (spot.iT - spot.iF + 360) % 360;
-  const half = (arc <= 180 ? arc : 360 - arc) / 2;
-  let d = Math.abs(deg - spot.iM); if (d > 180) d = 360 - d;
-  return Math.max(0, 1 - Math.max(0, d - half) / 60);
-}
 
-function score(w, spot) {
-  const ds = dscore(w.dir, spot), dp = Math.round(ds * 5);
-  const wp = w.kn>=16&&w.kn<=25?3 : w.kn>=12&&w.kn<=30?2 : w.kn>=10?1 : 0;
-  let c = 0;
-  if (w.gust/Math.max(w.kn,1) > 1.5) c -= 2;
-  else if (w.gust/Math.max(w.kn,1) > 1.3) c -= 1;
-  if (w.rain > 2) c -= 1;
-  const s = Math.max(1, Math.min(10, dp + wp + c));
-  return { s, v: s>=7?'goed':s>=4?'matig':'slecht', ds, dp, dirLabel: ds>=0.85?'✓ Ideaal':ds>=0.5?'~ Acceptabel':'✗ Ongunstig' };
-}
+// ─────────────────────────────────────────────
+// AGENT (DATA)
+// ─────────────────────────────────────────────
 
-function gear(kn) {
-  if (kn < 12) return ['17–19m kite','Board 145cm+'];
-  if (kn < 16) return ['14–16m kite','Board 138–142cm'];
-  if (kn < 22) return ['12–14m kite','Board 136–140cm'];
-  if (kn < 28) return ['10–12m kite','Board 132–137cm'];
-  return ['7–9m kite','Board 128–134cm','⚠️ Sterk wind'];
-}
-
-function dayLbl(str) {
-  const [y,m,d] = str.split('-').map(Number);
-  const dt = new Date(y,m-1,d), now = new Date(); now.setHours(0,0,0,0);
-  const diff = Math.round((dt-now)/86400000);
-  if (diff===0) return `vandaag · ${d} ${MONTHS[m-1]}`;
-  if (diff===1) return `morgen · ${d} ${MONTHS[m-1]}`;
-  return `${DAYS[dt.getDay()]} · ${d} ${MONTHS[m-1]}`;
-}
-
-// ── DRAW FORECAST FRAME ─────────────────────────────────────
-// Tekent 1 frame van de forecast (pijl + tijdlabel)
-function drawForecastFrame(lat, lon, frame, step, t) {
-
-  const safeT = (typeof t === 'number') ? t : 0;
-  const safeStep = (typeof step === 'number') ? step : 0;
-
-  const offsetLat = lat + ((safeStep + safeT) * 0.003);
-
-  const hour = Math.max(1, Math.round(safeStep + safeT));
-  const hourLabel = `+${hour}h`;
-
-  const html = `
-    <div style="text-align:center;">
-      <div style="
-        transform: rotate(${frame.deg + 180}deg);
-        color:#ff4d4d;
-        font-size:18px;
-        text-shadow: 0 0 6px #ff4d4d;
-      ">➤</div>
-      <div style="
-        font-size:10px;
-        color:#ff4d4d;
-        font-weight:bold;
-        text-shadow: 0 0 4px #ff4d4d;
-      ">${hourLabel}</div>
-    </div>
-  `;
-
-  const icon = L.divIcon({
-    className: '',
-    html,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-  });
-
-  if (!forecastMarker) {
-    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(map);
-  } else {
-    forecastMarker.setLatLng([offsetLat, lon]);
-    forecastMarker.setIcon(icon);
-  }
-}
-
-function startForecastAnimation(lat, lon) {
-  let frameIndex = 0;
-  let t = 0;
-
-  if (forecastAnimTimer) clearInterval(forecastAnimTimer);
-
-  forecastAnimTimer = setInterval(() => {
-
-    const frame = forecastFrames[forecastIndex];
-
-    drawForecastFrame(lat, lon, frame, forecastIndex);
-
-    forecastIndex++;
-
-    if (forecastIndex >= forecastFrames.length) {
-      forecastIndex = 0;
-    }
-
-  }, 1000);
-}
-
-// ── NAVIGATION ───────────────────────────────────────────────
-function goTab(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'agent') setTimeout(() => leafMap && leafMap.invalidateSize(), 300);
-}
-
-// ── RANKING ──────────────────────────────────────────────────
-async function loadRanking() {
-  try {
-    const rows = await Promise.all(SPOTS.map(async spot => {
-      try {
-        const r = await fetch("/api/analyse?type=weather", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lat: spot.lat,
-            lon: spot.lon,
-            days: 1
-          })
-        });
-
-        const data = await r.json();
-        if (!r.ok || data.error) return null;
-
-        const c = data.current;
-
-        const w = {
-          kn: kn(c.wind_kph),
-          gust: kn(c.gust_kph),
-          dir: c.wind_degree,
-          rain: c.precip_mm
-        };
-
-        return { spot, w, ...score(w, spot) };
-
-      } catch {
-        return null;
-      }
-    }));
-
-    const top3 = rows.filter(Boolean).sort((a,b) => b.s - a.s).slice(0, 3);
-    const medals = ['🥇','🥈','🥉'];
-    const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
-    document.getElementById('rankTs').textContent = `${now} · WeatherAPI`;
-
-    const body = document.getElementById('rankBody');
-    body.innerHTML = '';
-
-    if (!top3.length) {
-      body.innerHTML = `<div class="error-msg show">Geen data beschikbaar</div>`;
-      return;
-    }
-
- top3.forEach((r, i) => {
-    const dc = r.ds>=0.85 ? 'var(--green)' : r.ds>=0.5 ? 'var(--amber)' : 'var(--red)';
-    const stab = r.w.gust/r.w.kn <= 1.2 ? 'Stabiel' : r.w.gust/r.w.kn <= 1.4 ? 'Licht gusty' : 'Gusty';
-    const card = document.createElement('div');
-    card.className = `rank-card ${r.v}`;
-    card.innerHTML = `
-      <div class="rc-header">
-        <div>
-          <div style="font-size:1.2rem">${medals[i]}</div>
-          <div class="rc-name">${r.spot.name}</div>
-          <div class="rc-type">${r.spot.type}</div>
-        </div>
-        <div>
-          <div class="rc-score">${r.s}</div>
-          <div class="rc-score-sub">/10</div>
-        </div>
-      </div>
-      <div class="rc-grid">
-        <div class="rc-cell">
-          <div class="rc-cell-label">Richting</div>
-          <div class="rc-cell-val" style="color:${dc}">${compass(r.w.dir)}</div>
-          <span class="dir-badge ${r.ds>=0.85?'ideal':r.ds>=0.5?'ok':'bad'}">${r.dirLabel}</span>
-        </div>
-        <div class="rc-cell">
-          <div class="rc-cell-label">Wind</div>
-          <div class="rc-cell-val">${r.w.kn} kn</div>
-          <div style="font-family:var(--cond);font-size:10px;color:var(--muted)">${stab}</div>
-        </div>
-      </div>
-      <div class="rc-cta">Tik voor analyse →</div>`;
-     card.onclick = () => { sel = r.spot; renderChips(); updateMap(r.spot); goTab('agent'); };
-     body.appendChild(card);
-    });
-
-  } catch (err) {
-    document.getElementById('rankTs').textContent = "Fout bij ophalen data";
-  }
-}
-
-// ── PLANNER ──────────────────────────────────────────────────
-async function loadPlanning() {  // ✅ FIX: wrapped in function
-  try {
-    const results = await Promise.all(SPOTS.map(async spot => {
-      try {
-        const r = await fetch("/api/analyse?type=weather", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lat: spot.lat,
-            lon: spot.lon,
-            days: 7
-          })
-        });
-
-        const data = await r.json();
-        if (!r.ok || data.error) return { spot, moments: [] };
-
-        const now = new Date(), moments = [];
-
-        data.forecast.forecastday.forEach(fd => {
-          fd.hour.forEach(h => {
-            const dt = new Date(h.time);
-            if (dt <= now) return;
-
-            const wkn = kn(h.wind_kph);
-            const deg = h.wind_degree;
-
-            if (wkn < 12 || dscore(deg, spot) <= 0) return;
-
-            moments.push({
-              dt,
-              dp: h.time.split(' ')[0],
-              kn: Math.round(wkn),
-              deg
-            });
-          });
-        });
-
-        return { spot, moments };
-
-      } catch {
-        return { spot, moments: [] };
-      }
-    }));
-
-    document.getElementById('planTs').textContent =
-      new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
-
-    const body = document.getElementById('planBody');
-    body.innerHTML = '';
-
-    results.forEach(({ spot, moments }) => {
-      const block = document.createElement('div');
-      block.className = 'spot-block';
-      const cnt = moments.length > 0 ? `${moments.length} moment${moments.length!==1?'en':''}` : 'geen';
-      block.innerHTML = `<div class="spot-block-hdr"><span class="sbh-name">${spot.name}</span><span class="sbh-ideal">${spot.ideal}</span><span class="sbh-count">${cnt}</span></div>`;
-
-     if (!moments.length) {
-      block.innerHTML += `<div class="no-moments">Geen kitebare momenten de komende 7 dagen.</div>`;
-     } else {
-      const byDay = {};
-      moments.forEach(m => { if (!byDay[m.dp]) byDay[m.dp]=[]; byDay[m.dp].push(m); });
-      let t = `<div class="plan-tbl-wrap"><table class="plan-tbl"><thead><tr><th>Dag</th><th>Tijd</th><th>kn</th><th>Richting</th></tr></thead><tbody>`;
-      Object.entries(byDay).forEach(([day, ms]) => {
-        ms.forEach((m, i) => {
-          const time = `${String(m.dt.getHours()).padStart(2,'0')}:00`;
-          t += `<tr${i===0?' class="day-sep"':''}><td class="td-date">${i===0?dayLbl(day):''}</td><td class="td-time">${time}</td><td class="td-wind">${m.kn}</td><td class="td-dir">${compass(m.deg)}</td></tr>`;
-        });
-      });
-      t += `</tbody></table></div>`;
-      block.innerHTML += t;
-    }
-    body.appendChild(block);
-  });
-  } catch (err) {
-    document.getElementById('planTs').textContent = "Planner fout";
-  }
-}
-
-// ── MAP ──────────────────────────────────────────────────────
-function initMap() {
-  leafMap = L.map('spotMap', { center:[sel.lat, sel.lon], zoom:12, zoomControl:false });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OSM', maxZoom:18 }).addTo(leafMap);
-  const ico = L.divIcon({ className:'', html:`<div style="width:12px;height:12px;background:#00ff88;border:2px solid rgba(3,8,15,.8);border-radius:50%;box-shadow:0 0 8px #00ff88"></div>`, iconSize:[12,12], iconAnchor:[6,6] });
-  leafMarker = L.marker([sel.lat, sel.lon], { icon:ico }).addTo(leafMap).bindTooltip(`<b>${sel.name}</b>`, { direction:'top', offset:[0,-8] });
-
-  windControl = createWindControl();
-  windControl.addTo(leafMap);
-}
-
-function updateMap(spot) {
-  if (!leafMap) return;
-  leafMap.flyTo([spot.lat, spot.lon], 12, { duration:.8 });
-  leafMarker.setLatLng([spot.lat, spot.lon]);
-  leafMarker.setTooltipContent(`<b>${spot.name}</b>`);
-  document.getElementById('windBadge').classList.remove('show');
-}
-
-function drawArrow(deg, wkn) {
-  const cv = document.getElementById('windCanvas'); if (!cv) return;
-  const ctx = cv.getContext('2d'), cx=22, cy=22, r=19;
-  ctx.clearRect(0,0,44,44);
-  ctx.beginPath(); ctx.arc(cx,cy,r,0,2*Math.PI); ctx.fillStyle='rgba(0,255,136,0.08)'; ctx.fill(); ctx.strokeStyle='#00ff88'; ctx.lineWidth=1; ctx.stroke();
-  ctx.fillStyle='rgba(221,238,255,0.25)'; ctx.font='6px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('N',cx,cy-r+6); ctx.fillText('Z',cx,cy+r-6); ctx.fillText('W',cx-r+6,cy); ctx.fillText('O',cx+r-6,cy);
-  const rad = ((deg+180)*Math.PI)/180;
-  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rad);
-  ctx.beginPath(); ctx.moveTo(0,11); ctx.lineTo(0,-8); ctx.strokeStyle='#00ff88'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0,-13); ctx.lineTo(-4,-6); ctx.lineTo(4,-6); ctx.closePath(); ctx.fillStyle='#00ff88'; ctx.fill();
-  ctx.restore();
-}
-
-function showWind(wkn, deg) {
-  document.getElementById('wbKn').textContent = wkn + ' kn';
-  document.getElementById('wbDir').textContent = compass(deg) + ' ' + deg + '°';
-  document.getElementById('windBadge').classList.add('show');
-  if (animFrame) cancelAnimationFrame(animFrame);
-  const amp = Math.min(8, wkn * 0.3); let t = 0;
-  function loop(ts) { t = ts * 0.0008; drawArrow(deg + Math.sin(t)*amp, wkn); animFrame = requestAnimationFrame(loop); }
-  animFrame = requestAnimationFrame(loop);
-}
-
-// ── SPOT CHIPS ────────────────────────────────────────────────
-function renderChips() {
-  const sc = document.getElementById('spotScroll'); sc.innerHTML = '';
-  SPOTS.forEach(spot => {
-    const c = document.createElement('div');
-    c.className = 'spot-chip' + (spot.id === sel.id ? ' sel' : '');
-    c.innerHTML = `<span class="chip-name">${spot.name}</span><span class="chip-ideal">${spot.ideal}</span>`;
-    c.onclick = () => {
-      sel = spot; renderChips(); updateMap(spot);
-      document.getElementById('resultPanel').classList.remove('show');
-      document.getElementById('agentLog').classList.remove('show');
-      document.getElementById('errorMsg').classList.remove('show');
-    };
-    sc.appendChild(c);
-  });
-  sc.querySelector('.sel')?.scrollIntoView({ inline:'center', behavior:'smooth' });
-}
-
-function renderInfoSpots() {
-  const c = document.getElementById('infoSpots');
-  c.innerHTML = '<h3>Kite Spots</h3>';
-  SPOTS.forEach(s => {
-    c.innerHTML += `<div class="spot-row"><span class="sr-name">${s.name}</span><div style="text-align:right"><div class="sr-ideal">${s.ideal}</div><div class="sr-type">${s.type}</div></div></div>`;
-  });
-}
-
-// ── AGENT LOG ────────────────────────────────────────────────
-function lg(type, msg) {
-  const b = document.getElementById('logBody');
-  const d = document.createElement('div'); d.className = 'log-line';
-  const t = new Date().toTimeString().slice(0,8);
-  const styles = { ok:`<span class="l-ok">✓</span> `, think:`<span class="l-think">⟳ </span>`, tool:`<span class="l-tool">[T] </span>`, err:`<span class="l-err">✗ </span>` };
-  d.innerHTML = `<span style="color:var(--muted2)">${t} </span>${styles[type]||''}${msg}`;
-  b.appendChild(d); b.scrollTop = b.scrollHeight;
-}
-
-// ── AGENT ────────────────────────────────────────────────────
 async function runAgent() {
-  if (forecastAnimTimer) clearInterval(forecastAnimTimer);
+
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
 
   try {
-    lg('think', `Agent gestart voor ${sel.name}`); // ✅ FIXED
 
-    const wr = await fetch("/api/analyse?type=weather", {
+    const res = await fetch("/api/analyse?type=weather", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {"Content-Type":"application/json"},
       body: JSON.stringify({
         lat: sel.lat,
         lon: sel.lon,
@@ -1051,128 +671,30 @@ async function runAgent() {
       })
     });
 
-    const data = await wr.json();
-
-    if (!wr.ok || data.error) {
-      throw new Error(data.error?.message || "Weather API fout");
-    }
+    const data = await res.json();
 
     const c = data.current;
 
+    const windKn = kn(c.wind_kph);
+    const windDeg = c.wind_degree;
+
+    updateWindOverlay(windKn, windDeg);
+
+    // forecast
     const hours = data.forecast?.forecastday?.[0]?.hour || [];
 
-    forecastFrames = hours.slice(0, 6).map(h => ({
-              deg: h.wind_degree,
-              kn: kn(h.wind_kph)
-          }));
+    forecastFrames = hours.slice(0,6).map(h => ({
+      deg: h.wind_degree,
+      kn: kn(h.wind_kph)
+    }));
 
     startForecastAnimation(sel.lat, sel.lon);
 
-    // Score berekenen (zelfde logica als ranking)
-    const ev = score(w, sel);
-    lg('ok', `Score: ${ev.s}/10 → ${ev.v.toUpperCase()} · Richting: ${ev.dirLabel}`);
-
-    const prompt = `Je bent een expert kitesurf-coach. Analyseer de condities voor ${sel.name} (${sel.type}).
-
-LIVE DATA (WeatherAPI):
-- Wind: ${w.kn} knopen | Stoten: ${w.gust} knopen
-- Windrichting: ${w.dir}° (${compass(w.dir)}) | Ideale richting: ${sel.ideal}
-- Richtingsscore: ${ev.dirLabel} (${ev.dp}/5 punten)
-- Temperatuur: ${w.temp}°C | Neerslag: ${w.rain} mm/u
-- Totale score: ${ev.s}/10 (${ev.v.toUpperCase()})
-
-Geef je analyse in het Nederlands met de volgende onderdelen:
-
-SAMENVATTING
-Één zin: go of no-go, en waarom.
-
-WINDANALYSE
-Beoordeel de windrichting voor ${sel.name} (${sel.ideal} is ideaal), de stabiliteit en de kracht.
-
-TIMING ADVIES
-Is het nu het beste moment, of is er een beter tijdstip vandaag?
-
-AANDACHTSPUNT
-Maximaal 1 concreet veiligheids- of praktisch punt voor vandaag.
-
-Wees direct en praktisch. Gebruik kite-vakjargon waar passend.`;
-
-    const ar = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (!ar.ok) throw new Error(`AI fout ${ar.status}`);
-
-    const result = await ar.json();
-    const analysis = result.content?.map(b => b.text).join('') || 'Geen antwoord';
-
-    // Resultaat tonen
-    document.getElementById('agentLog').classList.remove('show');
-
-    // 1) Tijdstip links in de resultatenbalk
-    const now = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
-    const emojis = {goed:'🤙', matig:'⚠️', slecht:'⛔'};
-    const labels  = {goed:'Go!', matig:'Twijfel', slecht:'Stay Home'};
-
-    const ve = document.getElementById('verdictEl');
-    ve.className = `verdict ${ev.v}`;
-    document.getElementById('vEmoji').textContent = emojis[ev.v];
-    document.getElementById('vLabel').textContent = labels[ev.v];
-    document.getElementById('vSpot').textContent  = `${sel.name} · ${now}`;  // tijdstip
-
-    // 2) Score rechts in de resultatenbalk
-    document.getElementById('vScore').textContent = ev.s;
-
-    // 3) Live data — 6 blokken
-    const grid = document.getElementById('dataGrid'); grid.innerHTML = '';
-    [
-      {s:'WeatherAPI', l:'Wind',     v:w.kn,           u:'kn', sub:''},
-      {s:'WeatherAPI', l:'Stoten',   v:w.gust,          u:'kn', sub:`${(w.gust/w.kn).toFixed(2)}x`},
-      {s:'WeatherAPI', l:'Richting', v:compass(w.dir),  u:'',   sub:`${w.dir}°`},
-      {s:'WeatherAPI', l:'Temp',     v:w.temp,          u:'°C', sub:''},
-      {s:'Score',      l:'Richting', v:`${ev.dp}/5`,    u:'',   sub:ev.dirLabel},
-      {s:'Score',      l:'Totaal',   v:ev.s,            u:'/10',sub:ev.v.toUpperCase()},
-    ].forEach(t => {
-      grid.innerHTML += `<div class="data-tile"><div class="dt-src">${t.s}</div><div class="dt-label">${t.l}</div><div class="dt-val">${t.v}<span class="dt-unit">${t.u}</span></div>${t.sub?`<div class="dt-sub">${t.sub}</div>`:''}</div>`;
-    });
-
-    // 4) Materiaal advies
-    document.getElementById('gearRow').innerHTML = gear(w.kn).map(g => `<div class="gear-chip">🪁 ${g}</div>`).join('');
-
-    document.getElementById('aiBody').textContent = analysis;
-    document.getElementById('resultPanel').classList.add('show');
-    document.getElementById('resultPanel').scrollIntoView({ behavior:'smooth', block:'start' });
-
-  } catch (err) {
-    const em = document.getElementById('errorMsg');
-    em.textContent = 'Fout: ' + err.message;
-    em.classList.add('show');
-  } finally {
-    btn.disabled = false;
+  } catch (e) {
+    console.error(e);
   }
+
+  btn.disabled = false;
 }
 
-// ── START ────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  renderChips();
-  renderInfoSpots();
-  setTimeout(() => initMap(), 200);
-
-  loadRanking();
-  loadPlanning(); // ✅ NOW WORKS
-
- // 🔥 AUTO REFRESH (elke 5 min)
-  setInterval(() => {
-    if (typeof sel !== 'undefined') {
-      runAgent();
-    }
-  }, 300000);
-
-});
-</script> 
+</script>
