@@ -1039,7 +1039,7 @@ function lg(type, msg) {
 
 // ── AGENT ────────────────────────────────────────────────────
 async function runAgent() {
-  if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
+  if (forecastAnimTimer) clearInterval(forecastAnimTimer);
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
 
