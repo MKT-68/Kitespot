@@ -692,7 +692,6 @@ function drawForecastFrame(lat, lon, frame, step) {
         transform: rotate(${frame.deg + 180}deg);
         color:#ff4d4d;
         font-size:18px;
-        text-shadow: 0 0 6px #ff4d4d;
       ">➤</div>
     `,
     iconSize: [20, 20],
@@ -708,21 +707,18 @@ function startForecastAnimation(lat, lon) {
 
   forecastAnimTimer = setInterval(() => {
 
-    // const frame = forecastFrames[forecastIndex];🔥 NIEUW
-    const next = forecastFrames[forecastIndex];
-      drawForecastFrame(lat, lon, next, forecastIndex);
+    const frame = forecastFrames[forecastIndex];
 
     drawForecastFrame(lat, lon, frame, forecastIndex);
 
     forecastIndex++;
 
     if (forecastIndex >= forecastFrames.length) {
-      forecastIndex = 0; // loop
+      forecastIndex = 0;
     }
 
-  }, 1000); // ⏱️ snelheid (1 sec per uur)
+  }, 1000);
 }
-
 
 // ── NAVIGATION ───────────────────────────────────────────────
 function goTab(name) {
