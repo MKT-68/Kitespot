@@ -630,18 +630,18 @@ function startWindAnimation(deg, kn) {
 
 // ── FORECAST ANIMATION ──────────────────────────────────────
 // Animeert windrichting door de tijd (smooth)
- function startForecastAnimation(lat, lon) {
+function startForecastAnimation(lat, lon) {
 
-  if (forecastFrames.length >= 2) {
-    startForecastAnimation(sel.lat, sel.lon);
-  }
-
+  // ✅ STOP als geen data
   if (!forecastFrames || forecastFrames.length < 2) {
-    console.warn('Forecast animatie overgeslagen: geen data');
+    console.warn('[Forecast] ❌ Geen animatie data', forecastFrames);
     return;
   }
 
-  if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
+  // ✅ Stop vorige animatie
+  if (forecastAnimTimer) {
+    cancelAnimationFrame(forecastAnimTimer);
+  }
 
   let frameIndex = 0;
   let t = 0;
@@ -650,7 +650,10 @@ function startWindAnimation(deg, kn) {
     const current = forecastFrames[frameIndex];
     const next = forecastFrames[(frameIndex + 1) % forecastFrames.length];
 
-    if (!current || !next) return; // extra safety
+    if (!current || !next) {
+      console.warn('[Forecast] ❌ Frame ontbreekt', { current, next });
+      return;
+    }
 
     const deg = lerpAngle(current.deg, next.deg, t);
     const kn  = current.kn + (next.kn - current.kn) * t;
@@ -667,6 +670,7 @@ function startWindAnimation(deg, kn) {
     forecastAnimTimer = requestAnimationFrame(animate);
   }
 
+  console.log('[Forecast] ✅ Animatie gestart met frames:', forecastFrames.length);
   animate();
 }
 
@@ -1039,7 +1043,7 @@ function lg(type, msg) {
 
 // ── AGENT ────────────────────────────────────────────────────
 async function runAgent() {
-  if (forecastAnimTimer) clearInterval(forecastAnimTimer);
+  if (forecastAnimTimer) cancelAnimationFrame(forecastAnimTimer);
   const btn = document.getElementById('analyseBtn');
   btn.disabled = true;
 
@@ -1064,12 +1068,19 @@ async function runAgent() {
 
     const c = data.current;
 
-    const hours = data.forecast?.forecastday?.[0]?.hour || [];
+    const hours = data.forecast?.forecastday?.[0]?.hour;
 
-    forecastFrames = hours.slice(0, 6).map(h => ({
-              deg: h.wind_degree,
-              kn: kn(h.wind_kph)
-           }));
+    if (!hours || hours.length === 0) {
+               console.warn('[Forecast] ❌ Geen hours data', data);
+               forecastFrames = [];
+            } else {
+               forecastFrames = hours.slice(0, 6).map(h => ({
+                   deg: h.wind_degree,
+                   kn: kn(h.wind_kph)
+               }));
+           }
+
+console.log('[Forecast] frames opgebouwd:', forecastFrames);
 
     forecastIndex = 0;
 
