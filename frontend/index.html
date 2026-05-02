@@ -733,7 +733,11 @@ function drawForecastFrame(lat, lon, frame, step, t) {
   // 🔍 DEBUG
   console.log('lat:', lat, 'step:', step, 't:', t);
 
-  const hourLabel = `+${Math.round(step + t)}h`;
+  const safeT   = (typeof t === 'number') ? t : 0;
+  const safeStep = (typeof step === 'number') ? step : 0;
+
+  const hour = Math.round(safeStep + safeT);
+  const hourLabel = `+${hour}h`;
 
   const html = `
     <div style="text-align:center;">
@@ -745,10 +749,13 @@ function drawForecastFrame(lat, lon, frame, step, t) {
       ">➤</div>
       <div style="
         font-size:10px;
-        color:white;
+        color:#ff4d4d;
+        font-weight:bold;
+        text-shadow: 0 0 4px #ff4d4d;
         margin-top:-2px;
-      ">${hourLabel}</div>
-    </div>
+      ">
+        ${hourLabel}
+      </div>
   `;
 
   const icon = L.divIcon({
