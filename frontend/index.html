@@ -743,12 +743,23 @@ function drawForecastFrame(lat, lon, frame, step, t) {
         font-size:18px;
         text-shadow: 0 0 6px #ff4d4d;
       ">➤</div>
+
+      //<div style="
+      //  font-size:10px;
+      //  color:white;
+      //  margin-top:-2px;
+      //">${hourLabel}</div>
+    //</div>
+
       <div style="
         font-size:10px;
-        color:white;
+        color:#ff4d4d;
+        font-weight:bold;
+        text-shadow: 0 0 4px #ff4d4d;
         margin-top:-2px;
-      ">${hourLabel}</div>
-    </div>
+      ">
+        ${hourLabel}
+     </div>
   `;
 
   const icon = L.divIcon({
