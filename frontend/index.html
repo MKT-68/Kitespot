@@ -723,40 +723,40 @@ function dayLbl(str) {
 
 function drawForecastFrame(lat, lon, frame, step, t) {
 
-  if (forecastLayer) {
-    forecastLayer.clearLayers();
-  } else {
-    forecastLayer = L.layerGroup().addTo(leafMap);
-  }
-
-  // 📍 smooth positie (optioneel maar aanbevolen)
   const offsetLat = lat + ((step + t) * 0.01);
 
-  // ⏱️ tijd label (afronden of smooth)
   const hourLabel = `+${Math.round(step + t)}h`;
+
+  const html = `
+    <div style="text-align:center;">
+      <div style="
+        transform: rotate(${frame.deg + 180}deg);
+        color:#ff4d4d;
+        font-size:18px;
+        text-shadow: 0 0 6px #ff4d4d;
+      ">➤</div>
+      <div style="
+        font-size:10px;
+        color:white;
+        margin-top:-2px;
+      ">${hourLabel}</div>
+    </div>
+  `;
 
   const icon = L.divIcon({
     className: '',
-    html: `
-      <div style="text-align:center;">
-        <div style="
-          transform: rotate(${frame.deg + 180}deg);
-          color:#ff4d4d;
-          font-size:18px;
-          text-shadow: 0 0 6px #ff4d4d;
-        ">➤</div>
-        <div style="
-          font-size:10px;
-          color:white;
-          margin-top:-2px;
-        ">${hourLabel}</div>
-      </div>
-    `,
+    html: html,
     iconSize: [30, 30],
     iconAnchor: [15, 15]
   });
 
-  L.marker([offsetLat, lon], { icon }).addTo(forecastLayer);
+  // 🔥 HERGEBRUIK MARKER
+  if (!forecastMarker) {
+    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(leafMap);
+  } else {
+    forecastMarker.setLatLng([offsetLat, lon]);
+    forecastMarker.setIcon(icon);
+  }
 }
 
 function startForecastAnimation(lat, lon) {
