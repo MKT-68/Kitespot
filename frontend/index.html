@@ -772,12 +772,14 @@ function drawForecastFrame(lat, lon, frame, step, t) {
     iconAnchor: [15, 15]
   });
 
-  // 🔥 HERGEBRUIK MARKER
   if (!forecastMarker) {
-    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(leafMap);
-  } else {
-    forecastMarker.setLatLng([offsetLat, lon]);
-    forecastMarker.setIcon(icon);
+  forecastMarker = L.marker([offsetLat, lon], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div id="forecastArrow" style="font-size:18px;color:#ff4d4d;">➤</div>
+             <div id="forecastLabel" style="font-size:10px;color:#ff4d4d;font-weight:bold;"></div>`
+    })
+   }).addTo(leafMap);
   }
 }
 
