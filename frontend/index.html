@@ -1254,18 +1254,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
      loadRanking();   // alleen ranking bij start (8 calls)
 
-// ✅ NIEUW — pauzeer bij app naar achtergrond
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    stopAllAnimations();
-  } else {
-    // Herstart als agent-tab actief was
-    if (document.getElementById('tab-agent').classList.contains('active')) {
-      if (forecastFrames.length >= 2 && sel) startForecastAnimation(sel.lat, sel.lon);
-    }
-  }
-});
-
  // 🔥 AUTO REFRESH (elke 5 min)
   setInterval(() => {
     if (typeof sel !== 'undefined') {
