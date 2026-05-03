@@ -1067,21 +1067,65 @@ async function runAgent() {
 
     const c = data.current;
 
-    const hours = data.forecast?.forecastday?.[0]?.hour;
+    
+// ✅ Pak forecast uren
+const hours = data.forecast?.forecastday?.[0]?.hour || [];
 
-    if (!hours || hours.length === 0) {
-               console.warn('[Forecast] ❌ Geen hours data', data);
-               forecastFrames = [];
-            } else {
-               forecastFrames = hours.slice(0, 6).map(h => ({
-                   deg: h.wind_degree,
-                   kn: kn(h.wind_kph)
-               }));
-           }
+// ✅ Huidige tijd
+const now = new Date();
 
-console.log('[Forecast] frames opgebouwd:', forecastFrames);
+// ✅ Zoek forecast uur dat overeenkomt met NU
+const currentHourIndex = hours.findIndex(h => {
+  const dt = new Date(h.time);
+  return dt.getHours() === now.getHours();
+});
+
+// ✅ Fallback als niet gevonden
+const safeIndex = currentHourIndex >= 0 ? currentHourIndex : 0;
+
+// ✅ Bouw forecast frames (vanaf huidige uur)
+const nextHours = hours.slice(safeIndex + 1, safeIndex + 6);
+
+// ✅ 🔥 FORCE frame 0 = current (BELANGRIJK)
+forecastFrames = [
+  {
+    deg: c.wind_degree,
+    kn: kn(c.wind_kph)
+  },
+  ...nextHours.map(h => ({
+    deg: h.wind_degree,
+    kn: kn(h.wind_kph)
+  }))
+];
+
+
+
+
+
+
+     // Logging van de forecast data punten (6) op te vragen via browser => rechtermuisklik op scherm => Inspect => Console
+     // console.log('[Forecast] frames opgebouwd:', forecastFrames);
 
     forecastIndex = 0;
+
+console.log('[DEBUG] current wind:', {
+  deg: c.wind_degree,
+  kn: kn(c.wind_kph)
+});
+
+console.log('[DEBUG] forecast start index:', safeIndex);
+
+console.log('[DEBUG] forecast frames:', forecastFrames);
+
+console.log('[DEBUG] verschil frame0 vs current:', {
+  degDiff: Math.abs(c.wind_degree - forecastFrames[0].deg),
+  knDiff: Math.abs(kn(c.wind_kph) - forecastFrames[0].kn)
+});
+
+
+
+
+
 
     const w = {
       kn: kn(c.wind_kph),
