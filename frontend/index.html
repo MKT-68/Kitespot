@@ -802,7 +802,12 @@ async function loadRanking() {
         });
 
         const data = await r.json();
-        if (!r.ok || data.error) return null;
+
+        // 🔥 EXTRA VALIDATIE (HIER toevoegen)
+        if (!r.ok || data.error || !data.current) {
+         console.warn('[Ranking] ❌ Geen geldige data voor spot:', spot.name, data);
+         return null;
+        }
 
         const c = data.current;
 
