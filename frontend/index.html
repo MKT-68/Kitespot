@@ -1254,15 +1254,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
      loadRanking();   // alleen ranking bij start (8 calls)
 
- // 🔥 AUTO REFRESH (elke 5 min)
-  setInterval(() => {
-    if (typeof sel !== 'undefined') {
-      runAgent();
-    }
-  }, 300000);
-
-});
-
 // ✅ NIEUW — pauzeer bij app naar achtergrond
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
@@ -1273,6 +1264,15 @@ document.addEventListener('visibilitychange', () => {
       if (forecastFrames.length >= 2 && sel) startForecastAnimation(sel.lat, sel.lon);
     }
   }
+});
+
+ // 🔥 AUTO REFRESH (elke 5 min)
+  setInterval(() => {
+    if (typeof sel !== 'undefined') {
+      runAgent();
+    }
+  }, 300000);
+
 });
 
 </script> 
