@@ -1214,6 +1214,7 @@ Wees direct en praktisch. Gebruik kite-vakjargon waar passend.`;
 window.addEventListener('DOMContentLoaded', () => {
   renderChips();
   renderInfoSpots();
+     setTimeout(() => initMap(), 200);   // ← weggooien
 
   loadRanking();   // alleen ranking bij start (8 calls)
 
