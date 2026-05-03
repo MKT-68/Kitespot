@@ -490,6 +490,10 @@ const API_URL = "/api/analyse"; // ✅ FIXED (was hardcoded Vercel preview URL)
 //const API_URL = "https://kitespot-git-main-mkt-68s-projects.vercel.app/api/analyse";
 
 // ── HELPERS ─────────────────────────────────────────────────
+function kn(kph) {
+  return Math.round(kph * 0.539957);
+}
+
 // Windrichting tekst
 function compass(d) {
   return ['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
