@@ -8,7 +8,11 @@
 <meta name="apple-mobile-web-app-title" content="KiteSpot">
 <meta name="theme-color" content="#03080f">
 <title>KiteSpot</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- ✅ NA — asynchroon laden, geen render-blokkade -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap" onload="this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500&display=swap"></noscript>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -1057,7 +1061,6 @@ async function runAgent() {
 
     const c = data.current;
 
-    
 // ✅ Pak forecast uren
 const hours = data.forecast?.forecastday?.[0]?.hour || [];
 
@@ -1088,13 +1091,8 @@ forecastFrames = [
   }))
 ];
 
-
-
-
-
-
-     // Logging van de forecast data punten (6) op te vragen via browser => rechtermuisklik op scherm => Inspect => Console
-     // console.log('[Forecast] frames opgebouwd:', forecastFrames);
+// Logging van de forecast data punten (6) op te vragen via browser => rechtermuisklik op scherm => Inspect => Console
+// console.log('[Forecast] frames opgebouwd:', forecastFrames);
 
     forecastIndex = 0;
 
@@ -1111,11 +1109,6 @@ console.log('[DEBUG] verschil frame0 vs current:', {
   degDiff: Math.abs(c.wind_degree - forecastFrames[0].deg),
   knDiff: Math.abs(kn(c.wind_kph) - forecastFrames[0].kn)
 });
-
-
-
-
-
 
     const w = {
       kn: kn(c.wind_kph),
