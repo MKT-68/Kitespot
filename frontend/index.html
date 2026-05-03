@@ -783,6 +783,13 @@ function drawForecastFrame(lat, lon, frame, step, t) {
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────
+// ✅ NIEUW — stop alle lopende animaties
+function stopAllAnimations() {
+  if (forecastAnimTimer) { cancelAnimationFrame(forecastAnimTimer); forecastAnimTimer = null; }
+  if (windAnimFrame)     { cancelAnimationFrame(windAnimFrame);     windAnimFrame = null;     }
+  if (animFrame)         { cancelAnimationFrame(animFrame);         animFrame = null;         }
+}
+
 // ✅ NA
 function goTab(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
