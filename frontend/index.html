@@ -790,18 +790,34 @@ function stopAllAnimations() {
   if (animFrame)         { cancelAnimationFrame(animFrame);         animFrame = null;         }
 }
 
-// ✅ NA
+// ✅ DEFINITIEVE versie van goTab (combineert fix 1 + fix 2)
 function goTab(name) {
+  const current = document.querySelector('.tab.active')?.id;  // ← nieuw
+
+  // Stop animaties als je de agent-tab verlaat
+  if (current === 'tab-agent' && name !== 'agent') {           // ← nieuw
+    stopAllAnimations();                                        // ← nieuw
+  }                                                             // ← nieuw
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'agent') setTimeout(() => leafMap && leafMap.invalidateSize(), 300);
-  if (name === 'plan' && !plannerLoaded) {   // ← nieuw
-    plannerLoaded = true;                    // ← nieuw
-    loadPlanning();                          // ← nieuw
-  }                                          // ← nieuw
+
+  if (name === 'agent') {
+    setTimeout(() => leafMap && leafMap.invalidateSize(), 300);
+    // Herstart forecast animatie als data beschikbaar is    // ← nieuw
+    if (forecastFrames.length >= 2 && sel) {                 // ← nieuw
+      startForecastAnimation(sel.lat, sel.lon);              // ← nieuw
+    }                                                         // ← nieuw
+  }
+
+  if (name === 'plan' && !plannerLoaded) {
+    plannerLoaded = true;
+    loadPlanning();
+  }
 }
+
 // ── RANKING ──────────────────────────────────────────────────
 async function loadRanking() {
   try {
