@@ -772,15 +772,23 @@ function drawForecastFrame(lat, lon, frame, step, t) {
     iconAnchor: [15, 15]
   });
 
-  if (!forecastMarker) {
-  forecastMarker = L.marker([offsetLat, lon], {
-    icon: L.divIcon({
-      className: '',
-      html: `<div id="forecastArrow" style="font-size:18px;color:#ff4d4d;">➤</div>
-             <div id="forecastLabel" style="font-size:10px;color:#ff4d4d;font-weight:bold;"></div>`
-    })
-   }).addTo(leafMap);
+  forecastMarker.setLatLng([offsetLat, lon]);
+
+requestAnimationFrame(() => {
+  const el = forecastMarker.getElement();
+  if (!el) return;
+
+  const arrow = el.querySelector('#forecastArrow');
+  const label = el.querySelector('#forecastLabel');
+
+  if (arrow) {
+    arrow.style.transform = `rotate(${frame.deg + 90}deg)`;
   }
+
+  if (label) {
+    label.textContent = `+${hour}h`;
+  }
+});
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────
