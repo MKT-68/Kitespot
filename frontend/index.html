@@ -1235,8 +1235,7 @@ window.addEventListener('DOMContentLoaded', () => {
   renderInfoSpots();
   setTimeout(() => initMap(), 200);
 
-  loadRanking();
-  loadPlanning(); 
+  loadRanking();   // alleen ranking bij start (8 calls)
 
  // 🔥 AUTO REFRESH (elke 5 min)
   setInterval(() => {
