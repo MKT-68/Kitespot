@@ -491,16 +491,6 @@ const API_URL = "/api/analyse"; // ✅ FIXED (was hardcoded Vercel preview URL)
 
 // ── HELPERS ─────────────────────────────────────────────────
 // Windrichting tekst
-function compass(deg) {
-  const dirs = ['N','NO','O','ZO','Z','ZW','W','NW'];
-  return dirs[Math.round(deg / 45) % 8];
-}
-
-// km/h → knopen
-function kn(kph) {
-  return Math.round(kph * 0.539957);
-}
-
 function compass(d) {
   return ['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
 }
@@ -1072,12 +1062,12 @@ async function runAgent() {
 const hours = data.forecast?.forecastday?.[0]?.hour || [];
 
 // ✅ Huidige tijd
-const now = new Date();
+const nowTime = new Date();
 
 // ✅ Zoek forecast uur dat overeenkomt met NU
 const currentHourIndex = hours.findIndex(h => {
   const dt = new Date(h.time);
-  return dt.getHours() === now.getHours();
+  return dt.getHours() === nowTime.getHours();
 });
 
 // ✅ Fallback als niet gevonden
