@@ -464,6 +464,8 @@ let forecastFrames = [];
 let forecastIndex = 0;
 let forecastAnimTimer = null;
 let forecastMarker = null;
+let forecastArrowEl = null;   // ← nieuw: directe ref naar de pijl-div
+let forecastLabelEl = null;   // ← nieuw: directe ref naar het tijdlabel
 let sel = SPOTS[0];
 let leafMap = null;
 let leafMarker = null;
@@ -731,40 +733,24 @@ function drawForecastFrame(lat, lon, frame, step, t) {
   const hour      = Math.round(safeStep + safeT);
   const hourLabel = `+${hour}h`;
 
-  const html = `
-    <div style="text-align:center;">
-      <div style="
-        transform: rotate(${frame.deg + 90}deg);
-        color:#ff4d4d;
-        font-size:18px;
-        text-shadow: 0 0 6px #ff4d4d;
-      ">
-        ➤
-      </div>
-      <div style="
-        font-size:10px;
-        color:#ff4d4d;
-        font-weight:bold;
-        text-shadow: 0 0 4px #ff4d4d;
-        margin-top:-2px;
-      ">
-        ${hourLabel}
-     </div>
-  `;
-
-  const icon = L.divIcon({
-    className: '',
-    html: html,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-  });
-
-  // 🔥 HERGEBRUIK MARKER
   if (!forecastMarker) {
+    // Eerste keer: maak marker + icon eenmalig aan
+    const html = `
+      <div style="text-align:center;">
+        <div id="fcArrow" style="transform:rotate(${frame.deg + 90}deg);color:#ff4d4d;font-size:18px;text-shadow:0 0 6px #ff4d4d;">➤</div>
+        <div id="fcLabel" style="font-size:10px;color:#ff4d4d;font-weight:bold;text-shadow:0 0 4px #ff4d4d;margin-top:-2px;">${hourLabel}</div>
+      </div>`;
+    const icon = L.divIcon({ className:'', html, iconSize:[30,30], iconAnchor:[15,15] });
     forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(leafMap);
+
+    // Sla directe DOM-referenties op — daarna nooit meer setIcon()
+    forecastArrowEl = forecastMarker.getElement().querySelector('#fcArrow');
+    forecastLabelEl = forecastMarker.getElement().querySelector('#fcLabel');
   } else {
+    // Volgende frames: alleen positie + stijl updaten, geen nieuwe icon
     forecastMarker.setLatLng([offsetLat, lon]);
-    forecastMarker.setIcon(icon);
+    if (forecastArrowEl) forecastArrowEl.style.transform = `rotate(${frame.deg + 90}deg)`;
+    if (forecastLabelEl) forecastLabelEl.textContent = hourLabel;
   }
 }
 
@@ -953,20 +939,31 @@ async function loadPlanning() {  // ✅ FIX: wrapped in function
       const cnt = moments.length > 0 ? `${moments.length} moment${moments.length!==1?'en':''}` : 'geen';
       block.innerHTML = `<div class="spot-block-hdr"><span class="sbh-name">${spot.name}</span><span class="sbh-ideal">${spot.ideal}</span><span class="sbh-count">${cnt}</span></div>`;
 
-     if (!moments.length) {
+// ✅ NA
+    if (!moments.length) {
       block.innerHTML += `<div class="no-moments">Geen kitebare momenten de komende 7 dagen.</div>`;
-     } else {
+    } else {
       const byDay = {};
-      moments.forEach(m => { if (!byDay[m.dp]) byDay[m.dp]=[]; byDay[m.dp].push(m); });
-      let t = `<div class="plan-tbl-wrap"><table class="plan-tbl"><thead><tr><th>Dag</th><th>Tijd</th><th>kn</th><th>Richting</th></tr></thead><tbody>`;
-      Object.entries(byDay).forEach(([day, ms]) => {
-        ms.forEach((m, i) => {
+      moments.forEach(m => { if (!byDay[m.dp]) byDay[m.dp] = []; byDay[m.dp].push(m); });
+
+      const rows = Object.entries(byDay).flatMap(([day, ms]) =>
+        ms.map((m, i) => {
           const time = `${String(m.dt.getHours()).padStart(2,'0')}:00`;
-          t += `<tr${i===0?' class="day-sep"':''}><td class="td-date">${i===0?dayLbl(day):''}</td><td class="td-time">${time}</td><td class="td-wind">${m.kn}</td><td class="td-dir">${compass(m.deg)}</td></tr>`;
-        });
-      });
-      t += `</tbody></table></div>`;
-      block.innerHTML += t;
+          return `<tr${i === 0 ? ' class="day-sep"' : ''}>
+            <td class="td-date">${i === 0 ? dayLbl(day) : ''}</td>
+            <td class="td-time">${time}</td>
+            <td class="td-wind">${m.kn}</td>
+            <td class="td-dir">${compass(m.deg)}</td>
+          </tr>`;
+        })
+      ).join('');
+
+      block.innerHTML += `<div class="plan-tbl-wrap">
+        <table class="plan-tbl">
+          <thead><tr><th>Dag</th><th>Tijd</th><th>kn</th><th>Richting</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
     }
     body.appendChild(block);
   });
