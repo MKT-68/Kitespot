@@ -949,11 +949,32 @@ async function loadPlanning() {  // ✅ FIX: wrapped in function
       const cnt = moments.length > 0 ? `${moments.length} moment${moments.length!==1?'en':''}` : 'geen';
       block.innerHTML = `<div class="spot-block-hdr"><span class="sbh-name">${spot.name}</span><span class="sbh-ideal">${spot.ideal}</span><span class="sbh-count">${cnt}</span></div>`;
 
-     if (!moments.length) {
-      block.innerHTML += `<div class="no-moments">Geen kitebare momenten de komende 7 dagen.</div>`;
-     } else {
-      const byDay = {};
-      moments.forEach(m => { if (!byDay[m.dp]) byDay[m.dp]=[]; byDay[m.dp].push(m); });
+// ✅ NA
+if (!moments.length) {
+  block.innerHTML += `<div class="no-moments">Geen kitebare momenten de komende 7 dagen.</div>`;
+} else {
+  const byDay = {};
+  moments.forEach(m => { if (!byDay[m.dp]) byDay[m.dp] = []; byDay[m.dp].push(m); });
+
+  const rows = Object.entries(byDay).flatMap(([day, ms]) =>
+    ms.map((m, i) => {
+      const time = `${String(m.dt.getHours()).padStart(2,'0')}:00`;
+      return `<tr${i === 0 ? ' class="day-sep"' : ''}>
+        <td class="td-date">${i === 0 ? dayLbl(day) : ''}</td>
+        <td class="td-time">${time}</td>
+        <td class="td-wind">${m.kn}</td>
+        <td class="td-dir">${compass(m.deg)}</td>
+      </tr>`;
+    })
+  ).join('');
+
+  block.innerHTML += `<div class="plan-tbl-wrap">
+    <table class="plan-tbl">
+      <thead><tr><th>Dag</th><th>Tijd</th><th>kn</th><th>Richting</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
       let t = `<div class="plan-tbl-wrap"><table class="plan-tbl"><thead><tr><th>Dag</th><th>Tijd</th><th>kn</th><th>Richting</th></tr></thead><tbody>`;
       Object.entries(byDay).forEach(([day, ms]) => {
         ms.forEach((m, i) => {
@@ -1007,12 +1028,17 @@ function renderChips() {
   sc.querySelector('.sel')?.scrollIntoView({ inline:'center', behavior:'smooth' });
 }
 
+// ✅ NA — bouw één string, schrijf één keer naar de DOM
 function renderInfoSpots() {
-  const c = document.getElementById('infoSpots');
-  c.innerHTML = '<h3>Kite Spots</h3>';
-  SPOTS.forEach(s => {
-    c.innerHTML += `<div class="spot-row"><span class="sr-name">${s.name}</span><div style="text-align:right"><div class="sr-ideal">${s.ideal}</div><div class="sr-type">${s.type}</div></div></div>`;
-  });
+  const rows = SPOTS.map(s => `
+    <div class="spot-row">
+      <span class="sr-name">${s.name}</span>
+      <div style="text-align:right">
+        <div class="sr-ideal">${s.ideal}</div>
+        <div class="sr-type">${s.type}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('infoSpots').innerHTML = '<h3>Kite Spots</h3>' + rows;
 }
 
 // ── AGENT LOG ────────────────────────────────────────────────
