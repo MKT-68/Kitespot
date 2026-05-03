@@ -402,16 +402,6 @@ html, body { height:100%; background:var(--void); color:var(--foam); font-family
           </div>
         </div>
 
- <div style="text-align:center;">
-    <div id="forecastArrow"
-         style="display:inline-block; font-size:18px; color:#ff4d4d;">
-      ➤
-    </div>
-    <div id="forecastLabel"
-         style="font-size:10px; color:#ff4d4d; font-weight:bold;">
-    </div>
-  </div>
-
         <div class="section-title"><span>Live data</span></div>
         <div class="data-grid" id="dataGrid"></div>
 
@@ -483,6 +473,7 @@ const MONTHS = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov
 // ─────────────────────────────────────────────
 let windControl = null;
 let windAnimFrame = null;
+let plannerLoaded = false;
 let forecastFrames = [];
 let forecastIndex = 0;
 let forecastAnimTimer = null;
@@ -782,23 +773,13 @@ function drawForecastFrame(lat, lon, frame, step, t) {
     iconAnchor: [15, 15]
   });
 
-  forecastMarker.setLatLng([offsetLat, lon]);
-
-requestAnimationFrame(() => {
-  const el = forecastMarker.getElement();
-  if (!el) return;
-
-  const arrow = el.querySelector('#forecastArrow');
-  const label = el.querySelector('#forecastLabel');
-
-  if (arrow) {
-    arrow.style.transform = `rotate(${frame.deg + 90}deg)`;
+  // 🔥 HERGEBRUIK MARKER
+  if (!forecastMarker) {
+    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(leafMap);
+  } else {
+    forecastMarker.setLatLng([offsetLat, lon]);
+    forecastMarker.setIcon(icon);
   }
-
-  if (label) {
-    label.textContent = `+${hour}h`;
-  }
-});
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────
@@ -808,8 +789,11 @@ function goTab(name) {
   document.getElementById('page-' + name).classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'agent') setTimeout(() => leafMap && leafMap.invalidateSize(), 300);
+  if (name === 'plan' && !plannerLoaded) {   // ← nieuw
+    plannerLoaded = true;                    // ← nieuw
+    loadPlanning();                          // ← nieuw
+  }                                          // ← nieuw
 }
-
 // ── RANKING ──────────────────────────────────────────────────
 async function loadRanking() {
   try {
@@ -1085,66 +1069,55 @@ async function runAgent() {
     }
 
     const c = data.current;
-
     
-// ✅ Pak forecast uren
-const hours = data.forecast?.forecastday?.[0]?.hour || [];
+    // ✅ Pak forecast uren
+    const hours = data.forecast?.forecastday?.[0]?.hour || [];
 
-// ✅ Huidige tijd
-const nowTime = new Date();
+    // ✅ Huidige tijd
+    const nowTime = new Date();
 
-// ✅ Zoek forecast uur dat overeenkomt met NU
-const currentHourIndex = hours.findIndex(h => {
-  const dt = new Date(h.time);
-  return dt.getHours() === nowTime.getHours();
-});
+    // ✅ Zoek forecast uur dat overeenkomt met NU
+    const currentHourIndex = hours.findIndex(h => {
+      const dt = new Date(h.time);
+      return dt.getHours() === nowTime.getHours();
+    });
 
-// ✅ Fallback als niet gevonden
-const safeIndex = currentHourIndex >= 0 ? currentHourIndex : 0;
+    // ✅ Fallback als niet gevonden
+    const safeIndex = currentHourIndex >= 0 ? currentHourIndex : 0;
 
-// ✅ Bouw forecast frames (vanaf huidige uur)
-const nextHours = hours.slice(safeIndex + 1, safeIndex + 6);
+    // ✅ Bouw forecast frames (vanaf huidige uur)
+    const nextHours = hours.slice(safeIndex + 1, safeIndex + 6);
 
-// ✅ 🔥 FORCE frame 0 = current (BELANGRIJK)
-forecastFrames = [
-  {
-    deg: c.wind_degree,
-    kn: kn(c.wind_kph)
-  },
-  ...nextHours.map(h => ({
-    deg: h.wind_degree,
-    kn: kn(h.wind_kph)
-  }))
-];
+    // ✅ 🔥 FORCE frame 0 = current (BELANGRIJK)
+    forecastFrames = [
+      {
+        deg: c.wind_degree,
+        kn: kn(c.wind_kph)
+      },
+      ...nextHours.map(h => ({
+        deg: h.wind_degree,
+        kn: kn(h.wind_kph)
+      }))
+    ];
 
-
-
-
-
-
-     // Logging van de forecast data punten (6) op te vragen via browser => rechtermuisklik op scherm => Inspect => Console
-     // console.log('[Forecast] frames opgebouwd:', forecastFrames);
+    // Logging van de forecast data punten (6) op te vragen via browser => rechtermuisklik op scherm => Inspect => Console
+    // console.log('[Forecast] frames opgebouwd:', forecastFrames);
 
     forecastIndex = 0;
 
-console.log('[DEBUG] current wind:', {
-  deg: c.wind_degree,
-  kn: kn(c.wind_kph)
-});
+    console.log('[DEBUG] current wind:', {
+      deg: c.wind_degree,
+      kn: kn(c.wind_kph)
+    });
 
-console.log('[DEBUG] forecast start index:', safeIndex);
+    console.log('[DEBUG] forecast start index:', safeIndex);
 
-console.log('[DEBUG] forecast frames:', forecastFrames);
+    console.log('[DEBUG] forecast frames:', forecastFrames);
 
-console.log('[DEBUG] verschil frame0 vs current:', {
-  degDiff: Math.abs(c.wind_degree - forecastFrames[0].deg),
-  knDiff: Math.abs(kn(c.wind_kph) - forecastFrames[0].kn)
-});
-
-
-
-
-
+    console.log('[DEBUG] verschil frame0 vs current:', {
+      degDiff: Math.abs(c.wind_degree - forecastFrames[0].deg),
+      knDiff: Math.abs(kn(c.wind_kph) - forecastFrames[0].kn)
+    });
 
     const w = {
       kn: kn(c.wind_kph),
@@ -1255,8 +1228,7 @@ window.addEventListener('DOMContentLoaded', () => {
   renderInfoSpots();
   setTimeout(() => initMap(), 200);
 
-  loadRanking();
-  loadPlanning(); 
+     loadRanking();   // alleen ranking bij start (8 calls)
 
  // 🔥 AUTO REFRESH (elke 5 min)
   setInterval(() => {
