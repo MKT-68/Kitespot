@@ -1230,9 +1230,10 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
- // 🔥 AUTO REFRESH (elke 5 min)
+// 🔥 AUTO REFRESH (elke 5 min) — alleen als agent-tab zichtbaar is
   setInterval(() => {
-    if (typeof sel !== 'undefined') {
+    const agentTabActief = document.getElementById('page-agent').classList.contains('active');
+    if (agentTabActief && typeof sel !== 'undefined') {
       runAgent();
     }
   }, 300000);
