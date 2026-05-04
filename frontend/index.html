@@ -1405,7 +1405,7 @@ async function runAgent() {
     const wr = await fetch("/api/analyse?type=weather", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ lat: sel.lat, lon: sel.lon, days: 1 })
+      body:    JSON.stringify({ lat: sel.lat, lon: sel.lon, days: 2 })
     });
 
     const data = await wr.json();
@@ -1416,18 +1416,28 @@ async function runAgent() {
 
     const c = data.current;
 
-    // Pak forecast uren
-    const hours = data.forecast?.forecastday?.[0]?.hour || [];
+    // Combineer uren van dag 0 én dag 1 zodat we altijd genoeg frames hebben,
+    // ook als het laat op de avond is en dag 0 bijna geen uren meer heeft.
+    const day0hours = data.forecast?.forecastday?.[0]?.hour || [];
+    const day1hours = data.forecast?.forecastday?.[1]?.hour || [];
+    const allHours  = [...day0hours, ...day1hours];
 
-    // Zoek forecast uur dat overeenkomt met nu
+    // Zoek het uur dat overeenkomt met nu
     const nowTime          = new Date();
-    const currentHourIndex = hours.findIndex(h => new Date(h.time).getHours() === nowTime.getHours());
-    const safeIndex        = currentHourIndex >= 0 ? currentHourIndex : 0;
+    const currentHourIndex = allHours.findIndex(h => {
+      const dt = new Date(h.time);
+      return dt.getDate() === nowTime.getDate() && dt.getHours() === nowTime.getHours();
+    });
+    const safeIndex = currentHourIndex >= 0 ? currentHourIndex : 0;
 
-    // Bouw forecast frames (vanaf huidig uur)
-    const nextHours = hours.slice(safeIndex + 1, safeIndex + 6);
+    // Pak de 5 komende uren (over de daggrens heen)
+    const nextHours = allHours.slice(safeIndex + 1, safeIndex + 6);
 
-    // Frame 0 = current (belangrijk voor continuïteit)
+    if (nextHours.length === 0) {
+      lg('err', 'Geen forecast-uren beschikbaar voor animatie.');
+    }
+
+    // Frame 0 = current (belangrijk voor continuïteit animatie)
     forecastFrames = [
       { deg: c.wind_degree, kn: kn(c.wind_kph) },
       ...nextHours.map(h => ({ deg: h.wind_degree, kn: kn(h.wind_kph) }))
