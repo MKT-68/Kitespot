@@ -1057,8 +1057,19 @@ function drawForecastFrame(lat, lon, frame, step, t) {
   const safeT    = typeof t    === 'number' ? t    : 0;
   const safeStep = typeof step === 'number' ? step : 0;
 
-  const offsetLat = lat + (safeStep + safeT) * 0.003;
-  const hour      = Math.round(safeStep + safeT);
+const basePoint = leafMap.latLngToLayerPoint([lat, lon]);
+
+// bijvoorbeeld 12 px per uurstap
+const offsetPx = (safeStep + safeT) * 12;
+
+const animatedPoint = L.point(
+  basePoint.x,
+  basePoint.y - offsetPx
+);
+
+const animatedLatLng = leafMap.layerPointToLatLng(animatedPoint);
+
+forecastMarker.setLatLng(animatedLatLng);
   const hourLabel = `+${hour}h`;
 
   if (!forecastMarker) {
