@@ -1069,7 +1069,7 @@ const animatedPoint = L.point(
 
 const animatedLatLng = leafMap.layerPointToLatLng(animatedPoint);
 
-forecastMarker.setLatLng(animatedLatLng);
+const hour = Math.round(safeStep + safeT);
   const hourLabel = `+${hour}h`;
 
   if (!forecastMarker) {
@@ -1080,14 +1080,14 @@ forecastMarker.setLatLng(animatedLatLng);
         <div id="fcLabel" style="font-size:10px;color:#ff4d4d;font-weight:bold;text-shadow:0 0 4px #ff4d4d;margin-top:-2px;">${hourLabel}</div>
       </div>`;
     const icon = L.divIcon({ className: '', html, iconSize: [30, 30], iconAnchor: [15, 15] });
-    forecastMarker = L.marker([offsetLat, lon], { icon }).addTo(leafMap);
+    forecastMarker = L.marker(animatedLatLng, { icon }).addTo(leafMap);
 
     // Sla DOM-referenties op — daarna nooit meer setIcon() aanroepen
     forecastArrowEl = forecastMarker.getElement().querySelector('#fcArrow');
     forecastLabelEl = forecastMarker.getElement().querySelector('#fcLabel');
   } else {
     // Volgende frames: alleen positie en stijl updaten, geen nieuwe icon
-    forecastMarker.setLatLng([offsetLat, lon]);
+    forecastMarker.setLatLng(animatedLatLng);
     if (forecastArrowEl) forecastArrowEl.style.transform = `rotate(${frame.deg + 90}deg)`;
     if (forecastLabelEl) forecastLabelEl.textContent     = hourLabel;
   }
